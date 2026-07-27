@@ -1,4 +1,4 @@
-import 'package:daily_hq/main.dart';
+import 'package:daily_hq/app/daily_hq_app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
