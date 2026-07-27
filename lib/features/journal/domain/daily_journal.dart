@@ -6,7 +6,6 @@ class DailyJournal {
   const DailyJournal({
     required this.id,
     required this.date,
-    required this.journalText,
     required this.timeBlocks,
     required this.markdown,
     required this.createdAt,
@@ -15,7 +14,6 @@ class DailyJournal {
 
   final String id;
   final DateTime date;
-  final String journalText;
   final List<JournalTimeBlock> timeBlocks;
   final String markdown;
   final DateTime createdAt;
@@ -42,9 +40,6 @@ class DailyJournal {
     return DailyJournal(
       id: document.id,
       date: _readDate(data['date']),
-      journalText: data['journalText'] is String
-          ? data['journalText'] as String
-          : '',
       timeBlocks: timeBlocks,
       markdown: data['markdown'] is String ? data['markdown'] as String : '',
       createdAt: _readDate(data['createdAt']),

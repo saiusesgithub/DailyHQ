@@ -20,7 +20,6 @@ class JournalRepository {
 
   Future<void> saveJournal({
     required DateTime date,
-    required String journalText,
     required List<JournalTimeBlock> timeBlocks,
     required bool exists,
   }) {
@@ -31,9 +30,9 @@ class JournalRepository {
       );
     final data = <String, Object?>{
       'date': Timestamp.fromDate(normalizedDate),
-      'journalText': journalText,
       'timeBlocks': sortedBlocks.map((block) => block.toFirestore()).toList(),
-      'markdown': _buildMarkdown(normalizedDate, journalText, sortedBlocks),
+      'journalText': FieldValue.delete(),
+      'markdown': _buildMarkdown(normalizedDate, sortedBlocks),
       'updatedAt': FieldValue.serverTimestamp(),
     };
     if (!exists) data['createdAt'] = FieldValue.serverTimestamp();
@@ -47,11 +46,7 @@ class JournalRepository {
     return '${date.year}-$month-$day';
   }
 
-  static String _buildMarkdown(
-    DateTime date,
-    String journalText,
-    List<JournalTimeBlock> blocks,
-  ) {
+  static String _buildMarkdown(DateTime date, List<JournalTimeBlock> blocks) {
     final dateLabel =
         '${date.day.toString().padLeft(2, '0')}/'
         '${date.month.toString().padLeft(2, '0')}/${date.year}';
@@ -67,11 +62,6 @@ class JournalRepository {
         buffer.writeln('**Type:** ${block.category}');
         if (block.details.isNotEmpty) buffer.writeln('\n${block.details}');
       }
-    }
-
-    if (journalText.isNotEmpty) {
-      buffer.writeln('\n## Journal\n');
-      buffer.writeln(journalText);
     }
 
     return buffer.toString().trim();

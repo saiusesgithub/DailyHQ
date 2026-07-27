@@ -58,12 +58,10 @@ class _JournalPageState extends State<JournalPage> {
     required DailyJournal? journal,
     required List<JournalTimeBlock> timeBlocks,
     required String errorMessage,
-    String? journalText,
   }) async {
     try {
       await _repository.saveJournal(
         date: _selectedDate,
-        journalText: journalText ?? journal?.journalText ?? '',
         timeBlocks: timeBlocks,
         exists: journal != null,
       );
@@ -207,7 +205,6 @@ class _JournalDayView extends StatefulWidget {
     required DailyJournal? journal,
     required List<JournalTimeBlock> timeBlocks,
     required String errorMessage,
-    String? journalText,
   })
   onSave;
 
@@ -216,23 +213,6 @@ class _JournalDayView extends StatefulWidget {
 }
 
 class _JournalDayViewState extends State<_JournalDayView> {
-  late final TextEditingController _journalController;
-  bool _isSavingText = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _journalController = TextEditingController(
-      text: widget.journal?.journalText ?? '',
-    );
-  }
-
-  @override
-  void dispose() {
-    _journalController.dispose();
-    super.dispose();
-  }
-
   Future<void> _editBlock(JournalTimeBlock block) async {
     final edited = await showTimeBlockForm(context: context, timeBlock: block);
     if (edited == null) return;
@@ -278,17 +258,6 @@ class _JournalDayViewState extends State<_JournalDayView> {
     );
   }
 
-  Future<void> _saveJournalText() async {
-    setState(() => _isSavingText = true);
-    await widget.onSave(
-      journal: widget.journal,
-      timeBlocks: widget.journal?.timeBlocks ?? const [],
-      journalText: _journalController.text.trim(),
-      errorMessage: 'Could not save the journal.',
-    );
-    if (mounted) setState(() => _isSavingText = false);
-  }
-
   @override
   Widget build(BuildContext context) {
     final blocks = widget.journal?.timeBlocks ?? const <JournalTimeBlock>[];
@@ -321,37 +290,6 @@ class _JournalDayViewState extends State<_JournalDayView> {
                     ],
                   ],
                 ),
-        ),
-        const SizedBox(height: 16),
-        _Section(
-          title: 'Journal notes',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _journalController,
-                minLines: 5,
-                maxLines: 12,
-                decoration: const InputDecoration(
-                  hintText: 'Thoughts, lessons, observations…',
-                  alignLabelWithHint: true,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(
-                  onPressed: _isSavingText ? null : _saveJournalText,
-                  child: _isSavingText
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Save journal'),
-                ),
-              ),
-            ],
-          ),
         ),
         const SizedBox(height: 22),
         Text(
@@ -470,6 +408,8 @@ class _TimeBlockRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     block.details,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: colorScheme.onSurfaceVariant),
                   ),
                 ],
