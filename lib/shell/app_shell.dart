@@ -25,14 +25,14 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget get _selectedPage => switch (_selectedIndex) {
-    0 => const DashboardPage(),
+    0 => DashboardPage(onOpenInbox: () => _selectDestination(1)),
     1 => const InboxPage(),
     2 => const TasksPage(),
     3 => const ThoughtsPage(),
     4 => const ProjectsPage(),
     5 => const ContentPage(),
     6 => const SettingsPage(),
-    _ => const DashboardPage(),
+    _ => DashboardPage(onOpenInbox: () => _selectDestination(1)),
   };
 
   @override
