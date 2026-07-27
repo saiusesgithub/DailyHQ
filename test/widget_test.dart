@@ -1,5 +1,6 @@
-import 'package:daily_hq/app/daily_hq_app.dart';
 import 'package:daily_hq/app/firebase_startup_error_app.dart';
+import 'package:daily_hq/features/auth/presentation/auth_page.dart';
+import 'package:daily_hq/shell/app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -10,7 +11,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const DailyHqApp());
+    await _pumpShell(tester);
 
     expect(find.text('DailyHQ'), findsOneWidget);
     expect(find.text('Your personal headquarters'), findsOneWidget);
@@ -28,7 +29,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const DailyHqApp());
+    await _pumpShell(tester);
     await tester.tap(find.byType(IconButton).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Thoughts'));
@@ -45,7 +46,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const DailyHqApp());
+    await _pumpShell(tester);
 
     expect(find.text('Quick capture'), findsOneWidget);
     expect(find.text('Nothing planned for today.'), findsOneWidget);
@@ -60,7 +61,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const DailyHqApp());
+    await _pumpShell(tester);
     await tester.tap(find.text('Open inbox'));
     await tester.pump();
 
@@ -80,6 +81,25 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('authentication screen switches to account creation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: AuthPage()));
+
+    expect(find.text('Sign in'), findsOneWidget);
+    await tester.tap(find.text('New to DailyHQ? Create account'));
+    await tester.pump();
+
+    expect(find.text('Confirm password'), findsOneWidget);
+    expect(find.text('Create account'), findsOneWidget);
+  });
+}
+
+Future<void> _pumpShell(WidgetTester tester) {
+  return tester.pumpWidget(
+    const MaterialApp(home: AppShell(userId: 'test-user')),
+  );
 }
 
 String _placeholderText(WidgetTester tester) {

@@ -13,6 +13,6 @@ const navigationDestinations = [
   AppNavigationDestination('Tasks', Icons.check_circle_outline),
   AppNavigationDestination('Thoughts', Icons.lightbulb_outline),
   AppNavigationDestination('Projects', Icons.folder_outlined),
-  AppNavigationDestination('Content', Icons.edit_note_outlined),
+  AppNavigationDestination('LinkedIn Posts', Icons.post_add_outlined),
   AppNavigationDestination('Settings', Icons.settings_outlined),
 ];

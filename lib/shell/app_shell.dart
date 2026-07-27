@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../pages/content_page.dart';
+import '../features/linkedin_posts/presentation/linkedin_posts_page.dart';
 import '../pages/dashboard_page.dart';
 import '../pages/inbox_page.dart';
 import '../pages/projects_page.dart';
@@ -10,7 +10,9 @@ import '../pages/thoughts_page.dart';
 import 'navigation_destination.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  const AppShell({required this.userId, super.key});
+
+  final String userId;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -30,7 +32,7 @@ class _AppShellState extends State<AppShell> {
     2 => const TasksPage(),
     3 => const ThoughtsPage(),
     4 => const ProjectsPage(),
-    5 => const ContentPage(),
+    5 => LinkedInPostsPage(userId: widget.userId),
     6 => const SettingsPage(),
     _ => DashboardPage(onOpenInbox: () => _selectDestination(1)),
   };
@@ -154,11 +156,15 @@ class _SidebarDestination extends StatelessWidget {
             children: [
               Icon(destination.icon, size: 20, color: foregroundColor),
               const SizedBox(width: 12),
-              Text(
-                destination.label,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: foregroundColor,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              Expanded(
+                child: Text(
+                  destination.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: foregroundColor,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
                 ),
               ),
             ],
