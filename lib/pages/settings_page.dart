@@ -9,19 +9,21 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _isSigningOut = false;
+  bool _isDisconnecting = false;
 
-  Future<void> _signOut() async {
-    setState(() => _isSigningOut = true);
+  Future<void> _disconnectDevice() async {
+    setState(() => _isDisconnecting = true);
 
     try {
       await FirebaseAuth.instance.signOut();
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message ?? 'Could not sign out.')),
+        SnackBar(
+          content: Text(error.message ?? 'Could not disconnect this device.'),
+        ),
       );
-      setState(() => _isSigningOut = false);
+      setState(() => _isDisconnecting = false);
     }
   }
 
@@ -49,14 +51,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Manage your DailyHQ account.',
+                  'Manage this device connection.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 32),
                 Text(
-                  'Account',
+                  'Connection',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -77,7 +79,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Signed in as'),
+                          const Text('Connected email'),
                           const SizedBox(height: 4),
                           Text(
                             user?.email ?? 'DailyHQ user',
@@ -86,16 +88,16 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                       OutlinedButton.icon(
-                        onPressed: _isSigningOut ? null : _signOut,
-                        icon: _isSigningOut
+                        onPressed: _isDisconnecting ? null : _disconnectDevice,
+                        icon: _isDisconnecting
                             ? const SizedBox.square(
                                 dimension: 16,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Icon(Icons.logout, size: 18),
-                        label: const Text('Log out'),
+                            : const Icon(Icons.link_off, size: 18),
+                        label: const Text('Disconnect this device'),
                       ),
                     ],
                   ),

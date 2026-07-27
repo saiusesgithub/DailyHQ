@@ -12,9 +12,7 @@ class _AuthPageState extends State<AuthPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
-  bool _isCreatingAccount = false;
   bool _isSubmitting = false;
   bool _obscurePassword = true;
   String? _errorMessage;
@@ -23,7 +21,6 @@ class _AuthPageState extends State<AuthPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -39,17 +36,10 @@ class _AuthPageState extends State<AuthPage> {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      if (_isCreatingAccount) {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-      } else {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-      }
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = _messageFor(error));
@@ -66,24 +56,16 @@ class _AuthPageState extends State<AuthPage> {
 
   String _messageFor(FirebaseAuthException error) {
     return switch (error.code) {
-      'email-already-in-use' => 'An account already exists for this email.',
       'invalid-email' => 'Enter a valid email address.',
       'invalid-credential' ||
       'user-not-found' ||
       'wrong-password' => 'The email or password is incorrect.',
-      'weak-password' => 'Use a password with at least 6 characters.',
       'network-request-failed' => 'Check your connection and try again.',
       'too-many-requests' => 'Too many attempts. Please try again later.',
+      'operation-not-allowed' =>
+        'Email and password sign-in is not enabled for DailyHQ.',
       _ => error.message ?? 'Authentication failed. Please try again.',
     };
-  }
-
-  void _toggleMode() {
-    setState(() {
-      _isCreatingAccount = !_isCreatingAccount;
-      _errorMessage = null;
-      _confirmPasswordController.clear();
-    });
   }
 
   @override
@@ -103,7 +85,7 @@ class _AuthPageState extends State<AuthPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'DailyHQ',
+                      'Connect DailyHQ',
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(
                             fontWeight: FontWeight.w700,
@@ -113,9 +95,8 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _isCreatingAccount
-                          ? 'Create your personal workspace account'
-                          : 'Sign in to your personal workspace',
+                      'Sign in once to connect this device to your personal '
+                      'DailyHQ data.',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -168,40 +149,15 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                       ),
                       onFieldSubmitted: (_) {
-                        if (!_isCreatingAccount && !_isSubmitting) _submit();
+                        if (!_isSubmitting) _submit();
                       },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Enter your password.';
                         }
-                        if (_isCreatingAccount && value.length < 6) {
-                          return 'Use at least 6 characters.';
-                        }
                         return null;
                       },
                     ),
-                    if (_isCreatingAccount) ...[
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _confirmPasswordController,
-                        enabled: !_isSubmitting,
-                        obscureText: _obscurePassword,
-                        autofillHints: const [AutofillHints.newPassword],
-                        decoration: const InputDecoration(
-                          labelText: 'Confirm password',
-                          border: OutlineInputBorder(),
-                        ),
-                        onFieldSubmitted: (_) {
-                          if (!_isSubmitting) _submit();
-                        },
-                        validator: (value) {
-                          if (value != _passwordController.text) {
-                            return 'Passwords do not match.';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
                     if (_errorMessage != null) ...[
                       const SizedBox(height: 16),
                       Text(
@@ -218,18 +174,7 @@ class _AuthPageState extends State<AuthPage> {
                               dimension: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : Text(
-                              _isCreatingAccount ? 'Create account' : 'Sign in',
-                            ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: _isSubmitting ? null : _toggleMode,
-                      child: Text(
-                        _isCreatingAccount
-                            ? 'Already have an account? Sign in'
-                            : 'New to DailyHQ? Create account',
-                      ),
+                          : const Text('Connect device'),
                     ),
                   ],
                 ),
