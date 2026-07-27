@@ -1,4 +1,5 @@
 import 'package:daily_hq/app/daily_hq_app.dart';
+import 'package:daily_hq/app/firebase_startup_error_app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -64,6 +65,20 @@ void main() {
     await tester.pump();
 
     expect(_placeholderText(tester), 'Inbox');
+  });
+
+  testWidgets('Firebase startup failures show a readable error screen', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const FirebaseStartupErrorApp(error: 'Test initialization failure'),
+    );
+
+    expect(find.text('DailyHQ couldn\'t start'), findsOneWidget);
+    expect(
+      find.textContaining('Firebase initialization failed'),
+      findsOneWidget,
+    );
   });
 }
 
