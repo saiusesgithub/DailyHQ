@@ -12,7 +12,8 @@ void main() {
     await tester.pumpWidget(const DailyHqApp());
 
     expect(find.text('DailyHQ'), findsOneWidget);
-    expect(_placeholderText(tester), 'Dashboard');
+    expect(find.text('Your personal headquarters'), findsOneWidget);
+    expect(find.text('Nothing planned for today.'), findsOneWidget);
 
     await tester.tap(find.text('Projects'));
     await tester.pump();
@@ -33,6 +34,36 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_placeholderText(tester), 'Thoughts');
+  });
+
+  testWidgets('dashboard sections stack without overflow on mobile', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const DailyHqApp());
+
+    expect(find.text('Quick capture'), findsOneWidget);
+    expect(find.text('Nothing planned for today.'), findsOneWidget);
+    expect(find.text('Your inbox is clear.'), findsOneWidget);
+    expect(find.text('No active projects yet.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('open inbox action navigates to the inbox page', (tester) async {
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const DailyHqApp());
+    await tester.tap(find.text('Open inbox'));
+    await tester.pump();
+
+    expect(_placeholderText(tester), 'Inbox');
   });
 }
 
