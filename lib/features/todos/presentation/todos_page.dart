@@ -5,7 +5,7 @@ import '../data/todos_repository.dart';
 import '../domain/todo_item.dart';
 import '../domain/todo_priority.dart';
 import 'todo_form.dart';
-import 'todo_subtasks_dialog.dart';
+import 'todo_subtasks_panel.dart';
 
 enum _TodosView { list, matrix }
 
@@ -384,7 +384,7 @@ class _QuadrantPanel extends StatelessWidget {
   }
 }
 
-enum _TodoAction { edit, subtasks, moveToToday, togglePin, delete }
+enum _TodoAction { edit, moveToToday, togglePin, delete }
 
 class _TodoRow extends StatefulWidget {
   const _TodoRow({
@@ -403,6 +403,7 @@ class _TodoRow extends StatefulWidget {
 
 class _TodoRowState extends State<_TodoRow> {
   bool _isWorking = false;
+  bool _showSubtasks = false;
 
   Future<void> _setCompleted(bool value) async {
     setState(() => _isWorking = true);
@@ -419,13 +420,6 @@ class _TodoRowState extends State<_TodoRow> {
     switch (action) {
       case _TodoAction.edit:
         await showTodoForm(
-          context: context,
-          repository: widget.repository,
-          todo: widget.todo,
-        );
-        return;
-      case _TodoAction.subtasks:
-        await showTodoSubtasksDialog(
           context: context,
           repository: widget.repository,
           todo: widget.todo,
@@ -611,6 +605,26 @@ class _TodoRowState extends State<_TodoRow> {
                       ],
                     ),
                   ],
+                  const SizedBox(height: 4),
+                  TextButton.icon(
+                    onPressed: () =>
+                        setState(() => _showSubtasks = !_showSubtasks),
+                    icon: Icon(
+                      _showSubtasks ? Icons.expand_less : Icons.expand_more,
+                      size: 18,
+                    ),
+                    label: Text(
+                      todo.subtasks.isEmpty
+                          ? 'Add subtasks'
+                          : 'Subtasks (${todo.subtasks.length})',
+                    ),
+                  ),
+                  if (_showSubtasks)
+                    TodoSubtasksPanel(
+                      key: ValueKey(todo.id),
+                      repository: widget.repository,
+                      todo: todo,
+                    ),
                 ],
               ),
             ),
@@ -621,10 +635,6 @@ class _TodoRowState extends State<_TodoRow> {
             onSelected: _handleAction,
             itemBuilder: (context) => [
               const PopupMenuItem(value: _TodoAction.edit, child: Text('Edit')),
-              const PopupMenuItem(
-                value: _TodoAction.subtasks,
-                child: Text('Subtasks'),
-              ),
               if (!movedToday && !todo.isCompleted)
                 const PopupMenuItem(
                   value: _TodoAction.moveToToday,

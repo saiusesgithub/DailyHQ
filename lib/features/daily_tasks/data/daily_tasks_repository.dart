@@ -153,6 +153,54 @@ class DailyTasksRepository {
     await batch.commit();
   }
 
+  Future<void> updateRecurringTask({
+    required String recurringTaskId,
+    required String title,
+    required DailyTaskPriority priority,
+    required RecurringTaskFrequency frequency,
+    int? dayOfMonth,
+  }) async {
+    final today = _dateOnly(DateTime.now());
+    final template = _recurringTasks.doc(recurringTaskId);
+    final occurrence = _tasks.doc(_occurrenceId(recurringTaskId, today));
+    final occurrenceSnapshot = await occurrence.get();
+    final isDueToday = _isDueOnDate(frequency, dayOfMonth, today);
+    final batch = _firestore.batch();
+
+    batch.update(template, {
+      'title': title,
+      'priority': priority.name,
+      'frequency': frequency.name,
+      'dayOfMonth': frequency == RecurringTaskFrequency.monthly
+          ? dayOfMonth
+          : null,
+      'lastGeneratedDate': isDueToday ? Timestamp.fromDate(today) : null,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    if (isDueToday) {
+      if (occurrenceSnapshot.exists) {
+        batch.update(occurrence, {
+          'title': title,
+          'priority': priority.name,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        batch.set(
+          occurrence,
+          _recurringOccurrence(
+            recurringTaskId: recurringTaskId,
+            title: title,
+            priority: priority,
+            date: today,
+          ),
+        );
+      }
+    }
+
+    await batch.commit();
+  }
+
   Future<void> ensureTodayRecurringTasks() async {
     final today = _dateOnly(DateTime.now());
     final templates = await _recurringTasks.get();

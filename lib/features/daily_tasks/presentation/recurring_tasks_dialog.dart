@@ -24,10 +24,23 @@ Future<void> showRecurringTasksDialog({
   );
 }
 
+Future<void> showEditRecurringTaskDialog({
+  required BuildContext context,
+  required DailyTasksRepository repository,
+  required RecurringDailyTask task,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) =>
+        _RecurringTaskForm(repository: repository, task: task),
+  );
+}
+
 class _RecurringTaskForm extends StatefulWidget {
-  const _RecurringTaskForm({required this.repository});
+  const _RecurringTaskForm({required this.repository, this.task});
 
   final DailyTasksRepository repository;
+  final RecurringDailyTask? task;
 
   @override
   State<_RecurringTaskForm> createState() => _RecurringTaskFormState();
@@ -35,12 +48,22 @@ class _RecurringTaskForm extends StatefulWidget {
 
 class _RecurringTaskFormState extends State<_RecurringTaskForm> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  DailyTaskPriority _priority = DailyTaskPriority.medium;
-  RecurringTaskFrequency _frequency = RecurringTaskFrequency.daily;
-  int _dayOfMonth = DateTime.now().day;
+  late final TextEditingController _titleController;
+  late DailyTaskPriority _priority;
+  late RecurringTaskFrequency _frequency;
+  late int _dayOfMonth;
   bool _isSaving = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final task = widget.task;
+    _titleController = TextEditingController(text: task?.title ?? '');
+    _priority = task?.priority ?? DailyTaskPriority.medium;
+    _frequency = task?.frequency ?? RecurringTaskFrequency.daily;
+    _dayOfMonth = task?.dayOfMonth ?? DateTime.now().day;
+  }
 
   @override
   void dispose() {
@@ -56,20 +79,33 @@ class _RecurringTaskFormState extends State<_RecurringTaskForm> {
     });
 
     try {
-      await widget.repository.createRecurringTask(
-        title: _titleController.text.trim(),
-        priority: _priority,
-        frequency: _frequency,
-        dayOfMonth: _frequency == RecurringTaskFrequency.monthly
-            ? _dayOfMonth
-            : null,
-      );
+      final task = widget.task;
+      if (task == null) {
+        await widget.repository.createRecurringTask(
+          title: _titleController.text.trim(),
+          priority: _priority,
+          frequency: _frequency,
+          dayOfMonth: _frequency == RecurringTaskFrequency.monthly
+              ? _dayOfMonth
+              : null,
+        );
+      } else {
+        await widget.repository.updateRecurringTask(
+          recurringTaskId: task.id,
+          title: _titleController.text.trim(),
+          priority: _priority,
+          frequency: _frequency,
+          dayOfMonth: _frequency == RecurringTaskFrequency.monthly
+              ? _dayOfMonth
+              : null,
+        );
+      }
       if (mounted) Navigator.pop(context);
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _isSaving = false;
-        _error = 'Could not add the recurring task. $error';
+        _error = 'Could not save the recurring task. $error';
       });
     }
   }
@@ -77,7 +113,9 @@ class _RecurringTaskFormState extends State<_RecurringTaskForm> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Add recurring task'),
+      title: Text(
+        widget.task == null ? 'Add recurring task' : 'Edit recurring task',
+      ),
       content: SizedBox(
         width: 440,
         child: Form(
@@ -182,7 +220,7 @@ class _RecurringTaskFormState extends State<_RecurringTaskForm> {
                   dimension: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Add recurring task'),
+              : Text(widget.task == null ? 'Add recurring task' : 'Save'),
         ),
       ],
     );
@@ -277,10 +315,24 @@ class _RecurringTasksManager extends StatelessWidget {
                   subtitle: Text(
                     '${task.scheduleLabel} · ${task.priority.label} priority',
                   ),
-                  trailing: IconButton(
-                    onPressed: () => _stop(context, task),
-                    tooltip: 'Stop recurring',
-                    icon: const Icon(Icons.delete_outline),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () => showEditRecurringTaskDialog(
+                          context: context,
+                          repository: repository,
+                          task: task,
+                        ),
+                        tooltip: 'Edit recurring task',
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                      IconButton(
+                        onPressed: () => _stop(context, task),
+                        tooltip: 'Stop recurring',
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ],
                   ),
                 );
               },
