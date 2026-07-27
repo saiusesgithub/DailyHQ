@@ -82,17 +82,24 @@ void main() {
     );
   });
 
-  testWidgets('authentication screen switches to account creation', (
-    tester,
-  ) async {
+  testWidgets('device connection screen only offers sign in', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: AuthPage()));
 
-    expect(find.text('Sign in'), findsOneWidget);
-    await tester.tap(find.text('New to DailyHQ? Create account'));
+    expect(find.text('Connect DailyHQ'), findsOneWidget);
+    expect(
+      find.text(
+        'Sign in once to connect this device to your personal DailyHQ data.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Connect device'), findsOneWidget);
+    expect(find.textContaining('Create account'), findsNothing);
+
+    await tester.tap(find.text('Connect device'));
     await tester.pump();
 
-    expect(find.text('Confirm password'), findsOneWidget);
-    expect(find.text('Create account'), findsOneWidget);
+    expect(find.text('Enter your email address.'), findsOneWidget);
+    expect(find.text('Enter your password.'), findsOneWidget);
   });
 }
 
