@@ -34,6 +34,7 @@ class _LearningItemFormState extends State<_LearningItemForm> {
   late final TextEditingController _titleController;
   late final TextEditingController _areaController;
   late final TextEditingController _notesController;
+  late final TextEditingController _planController;
   late LearningStatus _status;
   late LearningRating _priority;
   late LearningRating _usefulness;
@@ -48,6 +49,7 @@ class _LearningItemFormState extends State<_LearningItemForm> {
     _titleController = TextEditingController(text: item?.title ?? '');
     _areaController = TextEditingController(text: item?.area ?? '');
     _notesController = TextEditingController(text: item?.notes ?? '');
+    _planController = TextEditingController(text: item?.plan ?? '');
     _status = item?.status ?? LearningStatus.toLearn;
     _priority = item?.priority ?? LearningRating.medium;
     _usefulness = item?.usefulness ?? LearningRating.medium;
@@ -62,6 +64,7 @@ class _LearningItemFormState extends State<_LearningItemForm> {
     _titleController.dispose();
     _areaController.dispose();
     _notesController.dispose();
+    _planController.dispose();
     for (final resource in _resources) {
       resource.dispose();
     }
@@ -101,6 +104,7 @@ class _LearningItemFormState extends State<_LearningItemForm> {
       title: _titleController.text.trim(),
       area: _areaController.text.trim(),
       notes: _notesController.text.trim(),
+      plan: _planController.text.trim(),
       status: _status,
       priority: _priority,
       usefulness: _usefulness,
@@ -191,6 +195,18 @@ class _LearningItemFormState extends State<_LearningItemForm> {
                     labelText: 'Notes',
                     alignLabelWithHint: true,
                     hintText: 'Why this matters or what to cover',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _planController,
+                  minLines: 4,
+                  maxLines: 10,
+                  decoration: const InputDecoration(
+                    labelText: 'Study plan',
+                    alignLabelWithHint: true,
+                    hintText:
+                        '1. Learn the fundamentals\n2. Build something small\n3. Review and practice',
                   ),
                 ),
                 const SizedBox(height: 16),

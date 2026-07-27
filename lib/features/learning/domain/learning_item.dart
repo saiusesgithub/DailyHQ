@@ -10,6 +10,7 @@ class LearningItem {
     required this.title,
     required this.area,
     required this.notes,
+    required this.plan,
     required this.status,
     required this.priority,
     required this.usefulness,
@@ -22,6 +23,7 @@ class LearningItem {
   final String title;
   final String area;
   final String notes;
+  final String plan;
   final LearningStatus status;
   final LearningRating priority;
   final LearningRating usefulness;
@@ -51,6 +53,7 @@ class LearningItem {
       title: data['title'] is String ? data['title'] as String : '',
       area: data['area'] is String ? data['area'] as String : '',
       notes: data['notes'] is String ? data['notes'] as String : '',
+      plan: data['plan'] is String ? data['plan'] as String : '',
       status: LearningStatus.fromFirestore(data['status']),
       priority: LearningRating.fromFirestore(data['priority']),
       usefulness: LearningRating.fromFirestore(data['usefulness']),
@@ -65,6 +68,7 @@ class LearningItem {
       'title': title,
       'area': area,
       'notes': notes,
+      'plan': plan,
       'status': status.name,
       'priority': priority.name,
       'usefulness': usefulness.name,

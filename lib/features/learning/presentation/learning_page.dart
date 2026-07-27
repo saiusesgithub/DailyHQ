@@ -252,6 +252,7 @@ class _LearningItemTile extends StatefulWidget {
 
 class _LearningItemTileState extends State<_LearningItemTile> {
   bool _isWorking = false;
+  bool _showPlan = false;
 
   Future<void> _handleAction(_LearningAction action) async {
     if (action == _LearningAction.edit) {
@@ -387,6 +388,32 @@ class _LearningItemTileState extends State<_LearningItemTile> {
                         ),
                     ],
                   ),
+                ],
+                if (item.plan.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => setState(() => _showPlan = !_showPlan),
+                    icon: Icon(
+                      _showPlan ? Icons.expand_less : Icons.expand_more,
+                      size: 18,
+                    ),
+                    label: Text(_showPlan ? 'Hide plan' : 'Show plan'),
+                  ),
+                  if (_showPlan)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SelectableText(
+                        item.plan,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(height: 1.5),
+                      ),
+                    ),
                 ],
               ],
             ),
