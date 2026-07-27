@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "686706967440",
+    "project_id": "dailyhq-19b3f",
+    "storage_bucket": "dailyhq-19b3f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:686706967440:android:b6a5ea185ec372806ee915",
+        "android_client_info": {
+          "package_name": "com.dailyhq.daily_hq"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC9RRNcuMsWykKCPRr-yXeKVpt4M9AvyQw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
