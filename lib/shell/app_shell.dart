@@ -5,10 +5,10 @@ import '../features/journal/presentation/journal_page.dart';
 import '../features/learning/presentation/learning_page.dart';
 import '../features/linkedin_posts/presentation/linkedin_posts_page.dart';
 import '../features/projects/presentation/projects_page.dart';
+import '../features/thoughts/presentation/thoughts_page.dart';
 import '../features/todos/presentation/todos_page.dart';
 import '../pages/dashboard_page.dart';
 import '../pages/settings_page.dart';
-import '../pages/thoughts_page.dart';
 import 'navigation_destination.dart';
 
 class AppShell extends StatefulWidget {
@@ -49,7 +49,7 @@ class _AppShellState extends State<AppShell> {
     AppDestination.todos => TodosPage(userId: widget.userId),
     AppDestination.journal => JournalPage(userId: widget.userId),
     AppDestination.learning => LearningPage(userId: widget.userId),
-    AppDestination.thoughts => const ThoughtsPage(),
+    AppDestination.thoughts => ThoughtsPage(userId: widget.userId),
     AppDestination.projects => ProjectsPage(userId: widget.userId),
     AppDestination.linkedinPosts => LinkedInPostsPage(userId: widget.userId),
     AppDestination.settings => const SettingsPage(),

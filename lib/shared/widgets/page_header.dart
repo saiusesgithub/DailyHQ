@@ -4,13 +4,13 @@ class PageHeader extends StatelessWidget {
   const PageHeader({
     required this.title,
     required this.subtitle,
-    required this.action,
+    this.action,
     super.key,
   });
 
   final String title;
   final String subtitle;
-  final Widget action;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -36,10 +36,12 @@ class PageHeader extends StatelessWidget {
           ],
         );
 
+        if (action == null) return text;
+
         if (constraints.maxWidth < 600) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [text, const SizedBox(height: 16), action],
+            children: [text, const SizedBox(height: 16), action!],
           );
         }
 
@@ -48,7 +50,7 @@ class PageHeader extends StatelessWidget {
           children: [
             Expanded(child: text),
             const SizedBox(width: 24),
-            action,
+            action!,
           ],
         );
       },
