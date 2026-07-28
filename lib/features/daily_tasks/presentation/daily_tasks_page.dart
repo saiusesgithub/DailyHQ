@@ -14,13 +14,37 @@ class DailyTasksPage extends StatefulWidget {
   State<DailyTasksPage> createState() => _DailyTasksPageState();
 }
 
-class _DailyTasksPageState extends State<DailyTasksPage> {
+class _DailyTasksPageState extends State<DailyTasksPage>
+    with WidgetsBindingObserver {
   late final DailyTasksRepository _repository;
 
   @override
   void initState() {
     super.initState();
     _repository = DailyTasksRepository(userId: widget.userId);
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureRecurring());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _ensureRecurring();
+  }
+
+  Future<void> _ensureRecurring() async {
+    try {
+      await _repository.ensureTodayRecurringTasks();
+    } catch (error) {
+      if (mounted) {
+        _showError('Could not add recurring tasks for today.', error);
+      }
+    }
   }
 
   Future<void> _addTask() async {
@@ -34,6 +58,23 @@ class _DailyTasksPageState extends State<DailyTasksPage> {
       await _repository.createTask(task.title, DateTime.now(), task.priority);
     } catch (error) {
       if (mounted) _showError('Could not add the task.', error);
+    }
+  }
+
+  Future<void> _addRecurringTask() async {
+    final task = await showDialog<_TaskDraft>(
+      context: context,
+      builder: (context) => const _TaskDialog(
+        heading: 'Add recurring task',
+        actionLabel: 'Add recurring task',
+      ),
+    );
+    if (task == null) return;
+
+    try {
+      await _repository.createRecurringTask(task.title, task.priority);
+    } catch (error) {
+      if (mounted) _showError('Could not add the recurring task.', error);
     }
   }
 
@@ -58,10 +99,21 @@ class _DailyTasksPageState extends State<DailyTasksPage> {
                 PageHeader(
                   title: 'Daily tasks',
                   subtitle: 'Plan today and keep yesterday in view.',
-                  action: FilledButton.icon(
-                    onPressed: _addTask,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add task'),
+                  action: Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _addRecurringTask,
+                        icon: const Icon(Icons.repeat, size: 18),
+                        label: const Text('Add recurring task'),
+                      ),
+                      FilledButton.icon(
+                        onPressed: _addTask,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add task'),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -291,7 +343,7 @@ class _DayCard extends StatelessWidget {
   }
 }
 
-enum _TaskAction { edit, delete }
+enum _TaskAction { edit, stopRecurring, delete }
 
 class _TaskRow extends StatefulWidget {
   const _TaskRow({
@@ -373,6 +425,36 @@ class _TaskRowState extends State<_TaskRow> {
           );
         }
         return;
+      case _TaskAction.stopRecurring:
+        final recurringTaskId = widget.task.recurringTaskId;
+        if (recurringTaskId == null) return;
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Stop recurring task?'),
+            content: const Text(
+              'This task will no longer be added to future daily plans. '
+              'Existing occurrences will remain.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Stop recurring'),
+              ),
+            ],
+          ),
+        );
+        if (confirmed == true) {
+          await _run(
+            () => widget.repository.stopRecurring(recurringTaskId),
+            'Could not stop the recurring task.',
+          );
+        }
+        return;
     }
   }
 
@@ -414,14 +496,30 @@ class _TaskRowState extends State<_TaskRow> {
                 ),
               ),
               const SizedBox(width: 8),
+              if (task.recurringTaskId != null) ...[
+                Icon(
+                  Icons.repeat,
+                  size: 17,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 7),
+              ],
               _PriorityBadge(priority: task.priority),
               PopupMenuButton<_TaskAction>(
                 enabled: !_isWorking,
                 tooltip: 'Task actions',
                 onSelected: _handleAction,
-                itemBuilder: (context) => const [
-                  PopupMenuItem(value: _TaskAction.edit, child: Text('Edit')),
-                  PopupMenuItem(
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: _TaskAction.edit,
+                    child: Text('Edit'),
+                  ),
+                  if (task.recurringTaskId != null)
+                    const PopupMenuItem(
+                      value: _TaskAction.stopRecurring,
+                      child: Text('Stop recurring'),
+                    ),
+                  const PopupMenuItem(
                     value: _TaskAction.delete,
                     child: Text('Delete'),
                   ),
@@ -429,7 +527,9 @@ class _TaskRowState extends State<_TaskRow> {
               ),
             ],
           ),
-          if (widget.isHistory && !task.isCompleted) ...[
+          if (widget.isHistory &&
+              !task.isCompleted &&
+              task.recurringTaskId == null) ...[
             Padding(
               padding: const EdgeInsets.only(left: 48),
               child: Align(
@@ -516,10 +616,14 @@ class _TaskDialog extends StatefulWidget {
   const _TaskDialog({
     this.initialTitle = '',
     this.initialPriority = DailyTaskPriority.medium,
+    this.heading,
+    this.actionLabel,
   });
 
   final String initialTitle;
   final DailyTaskPriority initialPriority;
+  final String? heading;
+  final String? actionLabel;
 
   @override
   State<_TaskDialog> createState() => _TaskDialogState();
@@ -555,7 +659,10 @@ class _TaskDialogState extends State<_TaskDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.initialTitle.isEmpty ? 'Add task' : 'Edit task'),
+      title: Text(
+        widget.heading ??
+            (widget.initialTitle.isEmpty ? 'Add task' : 'Edit task'),
+      ),
       content: SizedBox(
         width: 420,
         child: Column(
@@ -593,7 +700,10 @@ class _TaskDialogState extends State<_TaskDialog> {
         ),
         FilledButton(
           onPressed: _save,
-          child: Text(widget.initialTitle.isEmpty ? 'Add task' : 'Save'),
+          child: Text(
+            widget.actionLabel ??
+                (widget.initialTitle.isEmpty ? 'Add task' : 'Save'),
+          ),
         ),
       ],
     );

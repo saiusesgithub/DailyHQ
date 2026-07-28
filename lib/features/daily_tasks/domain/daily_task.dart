@@ -12,6 +12,7 @@ class DailyTask {
     required this.createdAt,
     required this.updatedAt,
     this.rolledOverAt,
+    this.recurringTaskId,
   });
 
   final String id;
@@ -22,6 +23,7 @@ class DailyTask {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? rolledOverAt;
+  final String? recurringTaskId;
 
   factory DailyTask.fromDocument(
     QueryDocumentSnapshot<Map<String, dynamic>> document,
@@ -38,6 +40,9 @@ class DailyTask {
       updatedAt: _readDate(data['updatedAt']),
       rolledOverAt: data['rolledOverAt'] is Timestamp
           ? (data['rolledOverAt'] as Timestamp).toDate()
+          : null,
+      recurringTaskId: data['recurringTaskId'] is String
+          ? data['recurringTaskId'] as String
           : null,
     );
   }
