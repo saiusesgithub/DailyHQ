@@ -107,14 +107,22 @@ class _TodosPageState extends State<TodosPage> {
   }
 }
 
-class _TodosList extends StatelessWidget {
+class _TodosList extends StatefulWidget {
   const _TodosList({required this.todos, required this.repository});
 
   final List<TodoItem> todos;
   final TodosRepository repository;
 
   @override
+  State<_TodosList> createState() => _TodosListState();
+}
+
+class _TodosListState extends State<_TodosList> {
+  bool _showCompleted = false;
+
+  @override
   Widget build(BuildContext context) {
+    final todos = widget.todos;
     if (todos.isEmpty) {
       return const _EmptyTodos(
         icon: Icons.checklist_outlined,
@@ -122,14 +130,15 @@ class _TodosList extends StatelessWidget {
       );
     }
 
-    final remaining = todos.where((todo) => !todo.isCompleted).length;
+    final active = todos.where((todo) => !todo.isCompleted).toList();
+    final completed = todos.where((todo) => todo.isCompleted).toList();
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Text(
-            '$remaining remaining · ${todos.length} total',
+            '${active.length} remaining · ${todos.length} total',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -142,16 +151,68 @@ class _TodosList extends StatelessWidget {
             ),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Column(
-            children: [
-              for (var index = 0; index < todos.length; index++) ...[
-                _TodoRow(todo: todos[index], repository: repository),
-                if (index != todos.length - 1)
-                  const Divider(height: 1, indent: 56),
-              ],
-            ],
-          ),
+          child: active.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
+                    child: Text(
+                      'No active to-dos.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                )
+              : Column(
+                  children: [
+                    for (var index = 0; index < active.length; index++) ...[
+                      _TodoRow(
+                        todo: active[index],
+                        repository: widget.repository,
+                      ),
+                      if (index != active.length - 1)
+                        const Divider(height: 1, indent: 56),
+                    ],
+                  ],
+                ),
         ),
+        if (completed.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  onTap: () => setState(() => _showCompleted = !_showCompleted),
+                  leading: Icon(
+                    _showCompleted ? Icons.expand_more : Icons.chevron_right,
+                  ),
+                  title: const Text(
+                    'Completed',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  trailing: Text('${completed.length}'),
+                ),
+                if (_showCompleted) ...[
+                  const Divider(height: 1),
+                  for (var index = 0; index < completed.length; index++) ...[
+                    _TodoRow(
+                      todo: completed[index],
+                      repository: widget.repository,
+                    ),
+                    if (index != completed.length - 1)
+                      const Divider(height: 1, indent: 56),
+                  ],
+                ],
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -225,7 +286,10 @@ class _EisenhowerMatrix extends StatelessWidget {
   List<TodoItem> _matching({required bool important, required bool urgent}) {
     return todos
         .where(
-          (todo) => todo.isImportant == important && todo.isUrgent == urgent,
+          (todo) =>
+              !todo.isCompleted &&
+              todo.isImportant == important &&
+              todo.isUrgent == urgent,
         )
         .toList();
   }

@@ -179,6 +179,7 @@ class _TasksTimeline extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 32),
       children: [
         _DayCard(
+          key: ValueKey(today),
           date: today,
           tasks: todayTasks,
           repository: repository,
@@ -209,6 +210,7 @@ class _TasksTimeline extends StatelessWidget {
         else
           for (final date in historyDates) ...[
             _DayCard(
+              key: ValueKey(date),
               date: date,
               tasks: history[date]!,
               repository: repository,
@@ -232,13 +234,14 @@ class _TasksTimeline extends StatelessWidget {
   }
 }
 
-class _DayCard extends StatelessWidget {
+class _DayCard extends StatefulWidget {
   const _DayCard({
     required this.date,
     required this.tasks,
     required this.repository,
     required this.onError,
     required this.isToday,
+    super.key,
   });
 
   final DateTime date;
@@ -248,12 +251,27 @@ class _DayCard extends StatelessWidget {
   final bool isToday;
 
   @override
+  State<_DayCard> createState() => _DayCardState();
+}
+
+class _DayCardState extends State<_DayCard> {
+  bool _showCompleted = false;
+
+  @override
   Widget build(BuildContext context) {
+    final tasks = widget.tasks;
+    final repository = widget.repository;
+    final onError = widget.onError;
+    final isToday = widget.isToday;
+    final pendingTasks = tasks.where((task) => !task.isCompleted).toList();
+    final completedTasks = tasks.where((task) => task.isCompleted).toList();
     final completed = tasks.where((task) => task.isCompleted).length;
     final progress = tasks.isEmpty ? 0.0 : completed / tasks.length;
     final percentage = (progress * 100).round();
     final colorScheme = Theme.of(context).colorScheme;
-    final dateLabel = MaterialLocalizations.of(context).formatFullDate(date);
+    final dateLabel = MaterialLocalizations.of(
+      context,
+    ).formatFullDate(widget.date);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -328,13 +346,46 @@ class _DayCard extends StatelessWidget {
               const SizedBox(height: 10),
               const Divider(height: 1),
               const SizedBox(height: 4),
-              for (final task in tasks)
+              for (final task in pendingTasks)
                 _TaskRow(
                   task: task,
                   repository: repository,
                   isHistory: !isToday,
                   onError: onError,
                 ),
+              if (pendingTasks.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Text(
+                    'No pending tasks.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: colorScheme.onSurfaceVariant),
+                  ),
+                ),
+              if (completedTasks.isNotEmpty) ...[
+                const Divider(height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  onTap: () => setState(() => _showCompleted = !_showCompleted),
+                  leading: Icon(
+                    _showCompleted ? Icons.expand_more : Icons.chevron_right,
+                  ),
+                  title: const Text(
+                    'Completed',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  trailing: Text('${completedTasks.length}'),
+                ),
+                if (_showCompleted)
+                  for (final task in completedTasks)
+                    _TaskRow(
+                      task: task,
+                      repository: repository,
+                      isHistory: !isToday,
+                      onError: onError,
+                    ),
+              ],
             ],
           ],
         ),
