@@ -1,0 +1,67 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'todo_priority.dart';
+
+class TodoItem {
+  const TodoItem({
+    required this.id,
+    required this.title,
+    required this.notes,
+    required this.priority,
+    required this.deadline,
+    required this.isImportant,
+    required this.isUrgent,
+    required this.isCompleted,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String title;
+  final String notes;
+  final TodoPriority priority;
+  final DateTime? deadline;
+  final bool isImportant;
+  final bool isUrgent;
+  final bool isCompleted;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  factory TodoItem.fromDocument(
+    QueryDocumentSnapshot<Map<String, dynamic>> document,
+  ) {
+    final data = document.data();
+    return TodoItem(
+      id: document.id,
+      title: data['title'] is String ? data['title'] as String : '',
+      notes: data['notes'] is String ? data['notes'] as String : '',
+      priority: TodoPriority.fromFirestore(data['priority']),
+      deadline: data['deadline'] is Timestamp
+          ? (data['deadline'] as Timestamp).toDate()
+          : null,
+      isImportant: data['isImportant'] == true,
+      isUrgent: data['isUrgent'] == true,
+      isCompleted: data['isCompleted'] == true,
+      createdAt: _readDate(data['createdAt']),
+      updatedAt: _readDate(data['updatedAt']),
+    );
+  }
+
+  Map<String, Object?> toFirestore() {
+    return {
+      'title': title,
+      'notes': notes,
+      'priority': priority.name,
+      'deadline': deadline == null ? null : Timestamp.fromDate(deadline!),
+      'isImportant': isImportant,
+      'isUrgent': isUrgent,
+      'isCompleted': isCompleted,
+    };
+  }
+
+  static DateTime _readDate(Object? value) {
+    return value is Timestamp
+        ? value.toDate()
+        : DateTime.fromMillisecondsSinceEpoch(0);
+  }
+}
