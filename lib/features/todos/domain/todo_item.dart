@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'todo_priority.dart';
+import 'todo_subtask.dart';
 
 class TodoItem {
   const TodoItem({
@@ -14,6 +15,8 @@ class TodoItem {
     required this.isCompleted,
     required this.createdAt,
     required this.updatedAt,
+    this.subtasks = const [],
+    this.isPinned = false,
   });
 
   final String id;
@@ -26,11 +29,23 @@ class TodoItem {
   final bool isCompleted;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final List<TodoSubtask> subtasks;
+  final bool isPinned;
 
   factory TodoItem.fromDocument(
     QueryDocumentSnapshot<Map<String, dynamic>> document,
   ) {
     final data = document.data();
+    final rawSubtasks = data['subtasks'];
+    final subtasks = rawSubtasks is List
+        ? rawSubtasks
+              .whereType<Map>()
+              .map(
+                (subtask) =>
+                    TodoSubtask.fromMap(Map<String, dynamic>.from(subtask)),
+              )
+              .toList()
+        : <TodoSubtask>[];
     return TodoItem(
       id: document.id,
       title: data['title'] is String ? data['title'] as String : '',
@@ -44,6 +59,8 @@ class TodoItem {
       isCompleted: data['isCompleted'] == true,
       createdAt: _readDate(data['createdAt']),
       updatedAt: _readDate(data['updatedAt']),
+      subtasks: subtasks,
+      isPinned: data['isPinned'] == true,
     );
   }
 
@@ -56,6 +73,8 @@ class TodoItem {
       'isImportant': isImportant,
       'isUrgent': isUrgent,
       'isCompleted': isCompleted,
+      'subtasks': subtasks.map((subtask) => subtask.toFirestore()).toList(),
+      'isPinned': isPinned,
     };
   }
 

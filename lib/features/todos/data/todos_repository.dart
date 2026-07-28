@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../domain/todo_item.dart';
+import '../domain/todo_subtask.dart';
 
 class TodosRepository {
   TodosRepository({required String userId, FirebaseFirestore? firestore})
@@ -43,9 +44,26 @@ class TodosRepository {
 
   Future<void> deleteTodo(String todoId) => _todos.doc(todoId).delete();
 
+  Future<void> setPinned(String todoId, bool isPinned) {
+    return _todos.doc(todoId).update({
+      'isPinned': isPinned,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> updateSubtasks(String todoId, List<TodoSubtask> subtasks) {
+    return _todos.doc(todoId).update({
+      'subtasks': subtasks.map((subtask) => subtask.toFirestore()).toList(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   static int _compareTodos(TodoItem first, TodoItem second) {
     if (first.isCompleted != second.isCompleted) {
       return first.isCompleted ? 1 : -1;
+    }
+    if (first.isPinned != second.isPinned) {
+      return first.isPinned ? -1 : 1;
     }
 
     final firstDeadline = first.deadline;

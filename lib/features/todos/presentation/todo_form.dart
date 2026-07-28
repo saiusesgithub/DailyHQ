@@ -90,6 +90,8 @@ class _TodoFormState extends State<_TodoForm> {
       isCompleted: existing?.isCompleted ?? false,
       createdAt: existing?.createdAt ?? now,
       updatedAt: existing?.updatedAt ?? now,
+      subtasks: existing?.subtasks ?? const [],
+      isPinned: existing?.isPinned ?? false,
     );
 
     try {
