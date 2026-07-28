@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'daily_task_priority.dart';
+
 class DailyTask {
   const DailyTask({
     required this.id,
     required this.title,
     required this.isCompleted,
+    required this.priority,
     required this.plannedDate,
     required this.createdAt,
     required this.updatedAt,
@@ -14,6 +17,7 @@ class DailyTask {
   final String id;
   final String title;
   final bool isCompleted;
+  final DailyTaskPriority priority;
   final DateTime plannedDate;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -28,6 +32,7 @@ class DailyTask {
       id: document.id,
       title: data['title'] is String ? data['title'] as String : '',
       isCompleted: data['isCompleted'] == true,
+      priority: DailyTaskPriority.fromFirestore(data['priority']),
       plannedDate: _readDate(data['plannedDate']),
       createdAt: _readDate(data['createdAt']),
       updatedAt: _readDate(data['updatedAt']),

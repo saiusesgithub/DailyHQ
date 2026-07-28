@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../domain/daily_task.dart';
+import '../domain/daily_task_priority.dart';
 
 class DailyTasksRepository {
   DailyTasksRepository({required String userId, FirebaseFirestore? firestore})
@@ -26,10 +27,15 @@ class DailyTasksRepository {
     });
   }
 
-  Future<void> createTask(String title, DateTime date) {
+  Future<void> createTask(
+    String title,
+    DateTime date,
+    DailyTaskPriority priority,
+  ) {
     return _tasks.add({
       'title': title,
       'isCompleted': false,
+      'priority': priority.name,
       'plannedDate': Timestamp.fromDate(_dateOnly(date)),
       'rolledOverAt': null,
       'createdAt': FieldValue.serverTimestamp(),
@@ -37,9 +43,14 @@ class DailyTasksRepository {
     });
   }
 
-  Future<void> updateTitle(String taskId, String title) {
+  Future<void> updateTask(
+    String taskId,
+    String title,
+    DailyTaskPriority priority,
+  ) {
     return _tasks.doc(taskId).update({
       'title': title,
+      'priority': priority.name,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -59,6 +70,7 @@ class DailyTasksRepository {
 
     batch.update(_tasks.doc(task.id), {
       'isCompleted': false,
+      'priority': task.priority.name,
       'rolledOverAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
