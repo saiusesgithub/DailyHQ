@@ -1,19 +1,59 @@
 import 'package:flutter/material.dart';
 
-class AppNavigationDestination {
-  const AppNavigationDestination(this.label, this.icon);
+enum AppDestination {
+  dashboard,
+  inbox,
+  dailyTasks,
+  todos,
+  thoughts,
+  projects,
+  linkedinPosts,
+  settings,
+}
 
+class AppNavigationDestination {
+  const AppNavigationDestination(this.id, this.label, this.icon);
+
+  final AppDestination id;
   final String label;
   final IconData icon;
 }
 
 const navigationDestinations = [
-  AppNavigationDestination('Dashboard', Icons.space_dashboard_outlined),
-  AppNavigationDestination('Inbox', Icons.inbox_outlined),
-  AppNavigationDestination('Tasks', Icons.check_circle_outline),
-  AppNavigationDestination('To-do list', Icons.checklist_outlined),
-  AppNavigationDestination('Thoughts', Icons.lightbulb_outline),
-  AppNavigationDestination('Projects', Icons.folder_outlined),
-  AppNavigationDestination('LinkedIn Posts', Icons.post_add_outlined),
-  AppNavigationDestination('Settings', Icons.settings_outlined),
+  AppNavigationDestination(
+    AppDestination.dashboard,
+    'Dashboard',
+    Icons.space_dashboard_outlined,
+  ),
+  AppNavigationDestination(AppDestination.inbox, 'Inbox', Icons.inbox_outlined),
+  AppNavigationDestination(
+    AppDestination.dailyTasks,
+    'Tasks',
+    Icons.check_circle_outline,
+  ),
+  AppNavigationDestination(
+    AppDestination.todos,
+    'To-do list',
+    Icons.checklist_outlined,
+  ),
+  AppNavigationDestination(
+    AppDestination.thoughts,
+    'Thoughts',
+    Icons.lightbulb_outline,
+  ),
+  AppNavigationDestination(
+    AppDestination.projects,
+    'Projects',
+    Icons.folder_outlined,
+  ),
+  AppNavigationDestination(
+    AppDestination.linkedinPosts,
+    'LinkedIn Posts',
+    Icons.post_add_outlined,
+  ),
+  AppNavigationDestination(
+    AppDestination.settings,
+    'Settings',
+    Icons.settings_outlined,
+  ),
 ];

@@ -21,22 +21,38 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   static const _desktopBreakpoint = 800.0;
-  int _selectedIndex = 0;
+  late final List<AppNavigationDestination> _destinations;
+  AppDestination _selectedDestination = AppDestination.dashboard;
 
-  void _selectDestination(int index) {
-    setState(() => _selectedIndex = index);
+  @override
+  void initState() {
+    super.initState();
+    _destinations = List.of(navigationDestinations);
   }
 
-  Widget get _selectedPage => switch (_selectedIndex) {
-    0 => DashboardPage(onOpenInbox: () => _selectDestination(1)),
-    1 => const InboxPage(),
-    2 => DailyTasksPage(userId: widget.userId),
-    3 => TodosPage(userId: widget.userId),
-    4 => const ThoughtsPage(),
-    5 => ProjectsPage(userId: widget.userId),
-    6 => LinkedInPostsPage(userId: widget.userId),
-    7 => const SettingsPage(),
-    _ => DashboardPage(onOpenInbox: () => _selectDestination(1)),
+  void _selectDestination(AppDestination destination) {
+    setState(() => _selectedDestination = destination);
+  }
+
+  void _reorderDestinations(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final destination = _destinations.removeAt(oldIndex);
+      _destinations.insert(newIndex, destination);
+    });
+  }
+
+  Widget get _selectedPage => switch (_selectedDestination) {
+    AppDestination.dashboard => DashboardPage(
+      onOpenInbox: () => _selectDestination(AppDestination.inbox),
+    ),
+    AppDestination.inbox => const InboxPage(),
+    AppDestination.dailyTasks => DailyTasksPage(userId: widget.userId),
+    AppDestination.todos => TodosPage(userId: widget.userId),
+    AppDestination.thoughts => const ThoughtsPage(),
+    AppDestination.projects => ProjectsPage(userId: widget.userId),
+    AppDestination.linkedinPosts => LinkedInPostsPage(userId: widget.userId),
+    AppDestination.settings => const SettingsPage(),
   };
 
   @override
@@ -48,8 +64,10 @@ class _AppShellState extends State<AppShell> {
         body: Row(
           children: [
             _DesktopSidebar(
-              selectedIndex: _selectedIndex,
+              destinations: _destinations,
+              selectedDestination: _selectedDestination,
               onDestinationSelected: _selectDestination,
+              onReorder: _reorderDestinations,
             ),
             const VerticalDivider(width: 1),
             Expanded(child: _selectedPage),
@@ -59,9 +77,18 @@ class _AppShellState extends State<AppShell> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(navigationDestinations[_selectedIndex].label)),
+      appBar: AppBar(
+        title: Text(
+          _destinations
+              .firstWhere(
+                (destination) => destination.id == _selectedDestination,
+              )
+              .label,
+        ),
+      ),
       drawer: _MobileDrawer(
-        selectedIndex: _selectedIndex,
+        destinations: _destinations,
+        selectedDestination: _selectedDestination,
         onDestinationSelected: _selectDestination,
       ),
       body: _selectedPage,
@@ -71,12 +98,16 @@ class _AppShellState extends State<AppShell> {
 
 class _DesktopSidebar extends StatelessWidget {
   const _DesktopSidebar({
-    required this.selectedIndex,
+    required this.destinations,
+    required this.selectedDestination,
     required this.onDestinationSelected,
+    required this.onReorder,
   });
 
-  final int selectedIndex;
-  final ValueChanged<int> onDestinationSelected;
+  final List<AppNavigationDestination> destinations;
+  final AppDestination selectedDestination;
+  final ValueChanged<AppDestination> onDestinationSelected;
+  final ReorderCallback onReorder;
 
   @override
   Widget build(BuildContext context) {
@@ -104,17 +135,24 @@ class _DesktopSidebar extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Expanded(
-                  child: ListView.separated(
+                  child: ReorderableListView.builder(
                     padding: EdgeInsets.zero,
-                    itemCount: navigationDestinations.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 4),
+                    buildDefaultDragHandles: false,
+                    onReorder: onReorder,
+                    itemCount: destinations.length,
                     itemBuilder: (context, index) {
-                      final destination = navigationDestinations[index];
-                      return _SidebarDestination(
-                        destination: destination,
-                        selected: selectedIndex == index,
-                        onTap: () => onDestinationSelected(index),
+                      final destination = destinations[index];
+                      return Padding(
+                        key: ValueKey(destination.id),
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: ReorderableDragStartListener(
+                          index: index,
+                          child: _SidebarDestination(
+                            destination: destination,
+                            selected: selectedDestination == destination.id,
+                            onTap: () => onDestinationSelected(destination.id),
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -169,6 +207,11 @@ class _SidebarDestination extends StatelessWidget {
                   ),
                 ),
               ),
+              Icon(
+                Icons.drag_indicator,
+                size: 18,
+                color: foregroundColor.withValues(alpha: 0.65),
+              ),
             ],
           ),
         ),
@@ -179,20 +222,24 @@ class _SidebarDestination extends StatelessWidget {
 
 class _MobileDrawer extends StatelessWidget {
   const _MobileDrawer({
-    required this.selectedIndex,
+    required this.destinations,
+    required this.selectedDestination,
     required this.onDestinationSelected,
   });
 
-  final int selectedIndex;
-  final ValueChanged<int> onDestinationSelected;
+  final List<AppNavigationDestination> destinations;
+  final AppDestination selectedDestination;
+  final ValueChanged<AppDestination> onDestinationSelected;
 
   @override
   Widget build(BuildContext context) {
     return NavigationDrawer(
-      selectedIndex: selectedIndex,
+      selectedIndex: destinations.indexWhere(
+        (destination) => destination.id == selectedDestination,
+      ),
       onDestinationSelected: (index) {
         Navigator.pop(context);
-        onDestinationSelected(index);
+        onDestinationSelected(destinations[index].id);
       },
       children: [
         Padding(
@@ -205,7 +252,7 @@ class _MobileDrawer extends StatelessWidget {
             ),
           ),
         ),
-        for (final destination in navigationDestinations)
+        for (final destination in destinations)
           NavigationDrawerDestination(
             icon: Icon(destination.icon),
             label: Text(destination.label),
