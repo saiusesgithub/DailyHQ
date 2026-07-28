@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../features/daily_tasks/presentation/daily_tasks_page.dart';
 import '../features/linkedin_posts/presentation/linkedin_posts_page.dart';
 import '../features/projects/presentation/projects_page.dart';
 import '../pages/dashboard_page.dart';
 import '../pages/inbox_page.dart';
 import '../pages/settings_page.dart';
-import '../pages/tasks_page.dart';
 import '../pages/thoughts_page.dart';
 import 'navigation_destination.dart';
 
@@ -29,7 +29,7 @@ class _AppShellState extends State<AppShell> {
   Widget get _selectedPage => switch (_selectedIndex) {
     0 => DashboardPage(onOpenInbox: () => _selectDestination(1)),
     1 => const InboxPage(),
-    2 => const TasksPage(),
+    2 => DailyTasksPage(userId: widget.userId),
     3 => const ThoughtsPage(),
     4 => ProjectsPage(userId: widget.userId),
     5 => LinkedInPostsPage(userId: widget.userId),
