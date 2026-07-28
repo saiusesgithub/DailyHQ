@@ -17,10 +17,10 @@ void main() {
     expect(find.text('Your personal headquarters'), findsOneWidget);
     expect(find.text('Nothing planned for today.'), findsOneWidget);
 
-    await tester.tap(find.text('Projects'));
+    await tester.tap(find.text('Tasks'));
     await tester.pump();
 
-    expect(_placeholderText(tester), 'Projects');
+    expect(_placeholderText(tester), 'Tasks');
   });
 
   testWidgets('mobile drawer navigates between modules', (tester) async {
