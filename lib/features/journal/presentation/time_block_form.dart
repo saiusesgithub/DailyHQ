@@ -56,6 +56,13 @@ class _TimeBlockFormState extends State<_TimeBlockForm> {
     final selected = await showTimePicker(
       context: context,
       initialTime: start ? _startTime : _endTime,
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
     );
     if (selected == null || !mounted) return;
     setState(() {
@@ -227,7 +234,7 @@ class _TimeField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       key: ValueKey('$label-${time.hour}-${time.minute}'),
-      initialValue: time.format(context),
+      initialValue: _formatTime12Hour(time),
       readOnly: true,
       onTap: onTap,
       decoration: InputDecoration(
@@ -235,5 +242,11 @@ class _TimeField extends StatelessWidget {
         suffixIcon: const Icon(Icons.schedule),
       ),
     );
+  }
+
+  static String _formatTime12Hour(TimeOfDay time) {
+    final suffix = time.hour >= 12 ? 'PM' : 'AM';
+    final displayHour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    return '$displayHour:${time.minute.toString().padLeft(2, '0')} $suffix';
   }
 }
