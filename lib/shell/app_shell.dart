@@ -6,7 +6,6 @@ import '../features/linkedin_posts/presentation/linkedin_posts_page.dart';
 import '../features/projects/presentation/projects_page.dart';
 import '../features/todos/presentation/todos_page.dart';
 import '../pages/dashboard_page.dart';
-import '../pages/inbox_page.dart';
 import '../pages/settings_page.dart';
 import '../pages/thoughts_page.dart';
 import 'navigation_destination.dart';
@@ -44,10 +43,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget get _selectedPage => switch (_selectedDestination) {
-    AppDestination.dashboard => DashboardPage(
-      onOpenInbox: () => _selectDestination(AppDestination.inbox),
-    ),
-    AppDestination.inbox => const InboxPage(),
+    AppDestination.dashboard => const DashboardPage(),
     AppDestination.dailyTasks => DailyTasksPage(userId: widget.userId),
     AppDestination.todos => TodosPage(userId: widget.userId),
     AppDestination.journal => JournalPage(userId: widget.userId),

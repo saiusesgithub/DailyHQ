@@ -5,9 +5,7 @@ import '../shared/widgets/page_header.dart';
 import '../shared/widgets/section_header.dart';
 
 class DashboardPage extends StatelessWidget {
-  const DashboardPage({required this.onOpenInbox, super.key});
-
-  final VoidCallback onOpenInbox;
+  const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +34,7 @@ class DashboardPage extends StatelessWidget {
                     const spacing = 20.0;
                     final useColumns = constraints.maxWidth >= 760;
                     final sectionWidth = useColumns
-                        ? (constraints.maxWidth - spacing * 2) / 3
+                        ? (constraints.maxWidth - spacing) / 2
                         : constraints.maxWidth;
 
                     return Wrap(
@@ -51,20 +49,6 @@ class DashboardPage extends StatelessWidget {
                               message: 'Nothing planned for today.',
                               actionLabel: 'Add a task',
                               onAction: () {},
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: sectionWidth,
-                          child: _DashboardSection(
-                            title: 'Inbox',
-                            child: EmptyState(
-                              message: 'Your inbox is clear.',
-                              description:
-                                  'Quickly captured thoughts and tasks will '
-                                  'appear here.',
-                              actionLabel: 'Open inbox',
-                              onAction: onOpenInbox,
                             ),
                           ),
                         ),

@@ -17,10 +17,10 @@ void main() {
     expect(find.text('Your personal headquarters'), findsOneWidget);
     expect(find.text('Nothing planned for today.'), findsOneWidget);
 
-    await tester.tap(find.text('Inbox').first);
+    await tester.tap(find.text('Thoughts').first);
     await tester.pump();
 
-    expect(_placeholderText(tester), 'Inbox');
+    expect(_placeholderText(tester), 'Thoughts');
   });
 
   testWidgets('mobile drawer navigates between modules', (tester) async {
@@ -50,22 +50,8 @@ void main() {
 
     expect(find.text('Quick capture'), findsOneWidget);
     expect(find.text('Nothing planned for today.'), findsOneWidget);
-    expect(find.text('Your inbox is clear.'), findsOneWidget);
     expect(find.text('No active projects yet.'), findsOneWidget);
     expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('open inbox action navigates to the inbox page', (tester) async {
-    tester.view.physicalSize = const Size(1200, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await _pumpShell(tester);
-    await tester.tap(find.text('Open inbox'));
-    await tester.pump();
-
-    expect(_placeholderText(tester), 'Inbox');
   });
 
   testWidgets('Firebase startup failures show a readable error screen', (

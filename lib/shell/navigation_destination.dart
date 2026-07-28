@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 enum AppDestination {
   dashboard,
-  inbox,
   dailyTasks,
   todos,
   journal,
@@ -26,10 +25,9 @@ const navigationDestinations = [
     'Dashboard',
     Icons.space_dashboard_outlined,
   ),
-  AppNavigationDestination(AppDestination.inbox, 'Inbox', Icons.inbox_outlined),
   AppNavigationDestination(
     AppDestination.dailyTasks,
-    'Tasks',
+    'Daily Tasks',
     Icons.check_circle_outline,
   ),
   AppNavigationDestination(
