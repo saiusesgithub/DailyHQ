@@ -5,6 +5,7 @@ enum AppDestination {
   dailyTasks,
   todos,
   journal,
+  learning,
   thoughts,
   projects,
   linkedinPosts,
@@ -39,6 +40,11 @@ const navigationDestinations = [
     AppDestination.journal,
     'Journal',
     Icons.auto_stories_outlined,
+  ),
+  AppNavigationDestination(
+    AppDestination.learning,
+    'Learning',
+    Icons.school_outlined,
   ),
   AppNavigationDestination(
     AppDestination.thoughts,
