@@ -57,6 +57,8 @@ class _LinkedInPostsCalendarViewState extends State<LinkedInPostsCalendarView> {
             focusedDay: _focusedDay,
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             calendarFormat: CalendarFormat.month,
+            rowHeight: 56,
+            daysOfWeekHeight: 30,
             availableCalendarFormats: const {CalendarFormat.month: 'Month'},
             eventLoader: _eventsForDay,
             onDaySelected: (selectedDay, focusedDay) {
@@ -69,11 +71,13 @@ class _LinkedInPostsCalendarViewState extends State<LinkedInPostsCalendarView> {
             headerStyle: const HeaderStyle(
               formatButtonVisible: false,
               titleCentered: true,
+              headerPadding: EdgeInsets.symmetric(vertical: 12),
               leftChevronMargin: EdgeInsets.zero,
               rightChevronMargin: EdgeInsets.zero,
             ),
             calendarStyle: CalendarStyle(
               outsideDaysVisible: false,
+              cellMargin: const EdgeInsets.all(4),
               todayDecoration: BoxDecoration(
                 color: colorScheme.secondaryContainer,
                 shape: BoxShape.circle,

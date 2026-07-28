@@ -9,7 +9,7 @@ import 'project_idea_form.dart';
 import 'project_ideas_view.dart';
 import 'projects_building_view.dart';
 
-enum _ProjectsView { ideas, building }
+enum _ProjectsView { building, ideas }
 
 class ProjectsPage extends StatefulWidget {
   const ProjectsPage({required this.userId, super.key});
@@ -22,7 +22,7 @@ class ProjectsPage extends StatefulWidget {
 
 class _ProjectsPageState extends State<ProjectsPage> {
   late final ProjectsRepository _repository;
-  _ProjectsView _selectedView = _ProjectsView.ideas;
+  _ProjectsView _selectedView = _ProjectsView.building;
 
   @override
   void initState() {
@@ -74,14 +74,14 @@ class _ProjectsPageState extends State<ProjectsPage> {
                   child: SegmentedButton<_ProjectsView>(
                     segments: const [
                       ButtonSegment(
-                        value: _ProjectsView.ideas,
-                        icon: Icon(Icons.lightbulb_outline),
-                        label: Text('Ideas'),
-                      ),
-                      ButtonSegment(
                         value: _ProjectsView.building,
                         icon: Icon(Icons.construction_outlined),
                         label: Text('Building'),
+                      ),
+                      ButtonSegment(
+                        value: _ProjectsView.ideas,
+                        icon: Icon(Icons.lightbulb_outline),
+                        label: Text('Ideas'),
                       ),
                     ],
                     selected: {_selectedView},
