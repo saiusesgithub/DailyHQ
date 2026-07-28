@@ -5,6 +5,7 @@ enum AppDestination {
   inbox,
   dailyTasks,
   todos,
+  journal,
   thoughts,
   projects,
   linkedinPosts,
@@ -35,6 +36,11 @@ const navigationDestinations = [
     AppDestination.todos,
     'To-do list',
     Icons.checklist_outlined,
+  ),
+  AppNavigationDestination(
+    AppDestination.journal,
+    'Journal',
+    Icons.auto_stories_outlined,
   ),
   AppNavigationDestination(
     AppDestination.thoughts,

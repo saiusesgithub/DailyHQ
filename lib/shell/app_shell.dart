@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../features/daily_tasks/presentation/daily_tasks_page.dart';
+import '../features/journal/presentation/journal_page.dart';
 import '../features/linkedin_posts/presentation/linkedin_posts_page.dart';
 import '../features/projects/presentation/projects_page.dart';
 import '../features/todos/presentation/todos_page.dart';
@@ -49,6 +50,7 @@ class _AppShellState extends State<AppShell> {
     AppDestination.inbox => const InboxPage(),
     AppDestination.dailyTasks => DailyTasksPage(userId: widget.userId),
     AppDestination.todos => TodosPage(userId: widget.userId),
+    AppDestination.journal => JournalPage(userId: widget.userId),
     AppDestination.thoughts => const ThoughtsPage(),
     AppDestination.projects => ProjectsPage(userId: widget.userId),
     AppDestination.linkedinPosts => LinkedInPostsPage(userId: widget.userId),
