@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../features/daily_tasks/presentation/daily_tasks_page.dart';
 import '../features/linkedin_posts/presentation/linkedin_posts_page.dart';
 import '../features/projects/presentation/projects_page.dart';
+import '../features/todos/presentation/todos_page.dart';
 import '../pages/dashboard_page.dart';
 import '../pages/inbox_page.dart';
 import '../pages/settings_page.dart';
@@ -30,10 +31,11 @@ class _AppShellState extends State<AppShell> {
     0 => DashboardPage(onOpenInbox: () => _selectDestination(1)),
     1 => const InboxPage(),
     2 => DailyTasksPage(userId: widget.userId),
-    3 => const ThoughtsPage(),
-    4 => ProjectsPage(userId: widget.userId),
-    5 => LinkedInPostsPage(userId: widget.userId),
-    6 => const SettingsPage(),
+    3 => TodosPage(userId: widget.userId),
+    4 => const ThoughtsPage(),
+    5 => ProjectsPage(userId: widget.userId),
+    6 => LinkedInPostsPage(userId: widget.userId),
+    7 => const SettingsPage(),
     _ => DashboardPage(onOpenInbox: () => _selectDestination(1)),
   };
 

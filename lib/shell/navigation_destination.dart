@@ -11,6 +11,7 @@ const navigationDestinations = [
   AppNavigationDestination('Dashboard', Icons.space_dashboard_outlined),
   AppNavigationDestination('Inbox', Icons.inbox_outlined),
   AppNavigationDestination('Tasks', Icons.check_circle_outline),
+  AppNavigationDestination('To-do list', Icons.checklist_outlined),
   AppNavigationDestination('Thoughts', Icons.lightbulb_outline),
   AppNavigationDestination('Projects', Icons.folder_outlined),
   AppNavigationDestination('LinkedIn Posts', Icons.post_add_outlined),
