@@ -5,6 +5,7 @@ import '../data/todos_repository.dart';
 import '../domain/todo_item.dart';
 import '../domain/todo_priority.dart';
 import 'todo_form.dart';
+import 'todo_subtasks_dialog.dart';
 
 enum _TodosView { list, matrix }
 
@@ -383,7 +384,7 @@ class _QuadrantPanel extends StatelessWidget {
   }
 }
 
-enum _TodoAction { edit, delete }
+enum _TodoAction { edit, subtasks, togglePin, delete }
 
 class _TodoRow extends StatefulWidget {
   const _TodoRow({
@@ -422,6 +423,26 @@ class _TodoRowState extends State<_TodoRow> {
           repository: widget.repository,
           todo: widget.todo,
         );
+        return;
+      case _TodoAction.subtasks:
+        await showTodoSubtasksDialog(
+          context: context,
+          repository: widget.repository,
+          todo: widget.todo,
+        );
+        return;
+      case _TodoAction.togglePin:
+        setState(() => _isWorking = true);
+        try {
+          await widget.repository.setPinned(
+            widget.todo.id,
+            !widget.todo.isPinned,
+          );
+          if (mounted) setState(() => _isWorking = false);
+        } catch (error) {
+          _showError('Could not update the pin. $error');
+          if (mounted) setState(() => _isWorking = false);
+        }
         return;
       case _TodoAction.delete:
         final confirmed = await showDialog<bool>(
@@ -470,6 +491,12 @@ class _TodoRowState extends State<_TodoRow> {
         : MaterialLocalizations.of(
             context,
           ).formatMediumDate(todo.deadline!.toLocal());
+    final completedSubtasks = todo.subtasks
+        .where((subtask) => subtask.isCompleted)
+        .length;
+    final subtaskProgress = todo.subtasks.isEmpty
+        ? 0.0
+        : completedSubtasks / todo.subtasks.length;
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -491,19 +518,34 @@ class _TodoRowState extends State<_TodoRow> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    todo.title,
-                    maxLines: widget.compact ? 2 : 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: todo.isCompleted
-                          ? colorScheme.onSurfaceVariant
-                          : colorScheme.onSurface,
-                      decoration: todo.isCompleted
-                          ? TextDecoration.lineThrough
-                          : null,
-                    ),
+                  Row(
+                    children: [
+                      if (todo.isPinned) ...[
+                        Icon(
+                          Icons.push_pin,
+                          size: 15,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Expanded(
+                        child: Text(
+                          todo.title,
+                          maxLines: widget.compact ? 2 : 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: todo.isCompleted
+                                    ? colorScheme.onSurfaceVariant
+                                    : colorScheme.onSurface,
+                                decoration: todo.isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                        ),
+                      ),
+                    ],
                   ),
                   if (!widget.compact && todo.notes.isNotEmpty) ...[
                     const SizedBox(height: 3),
@@ -532,6 +574,27 @@ class _TodoRowState extends State<_TodoRow> {
                         ),
                     ],
                   ),
+                  if (todo.subtasks.isNotEmpty) ...[
+                    const SizedBox(height: 9),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: LinearProgressIndicator(
+                            value: subtaskProgress,
+                            minHeight: 4,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${(subtaskProgress * 100).round()}% · '
+                          '$completedSubtasks/${todo.subtasks.length}',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -540,9 +603,21 @@ class _TodoRowState extends State<_TodoRow> {
             enabled: !_isWorking,
             tooltip: 'To-do actions',
             onSelected: _handleAction,
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: _TodoAction.edit, child: Text('Edit')),
-              PopupMenuItem(value: _TodoAction.delete, child: Text('Delete')),
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: _TodoAction.edit, child: Text('Edit')),
+              const PopupMenuItem(
+                value: _TodoAction.subtasks,
+                child: Text('Subtasks'),
+              ),
+              PopupMenuItem(
+                value: _TodoAction.togglePin,
+                child: Text(todo.isPinned ? 'Unpin' : 'Pin'),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: _TodoAction.delete,
+                child: Text('Delete'),
+              ),
             ],
           ),
         ],
