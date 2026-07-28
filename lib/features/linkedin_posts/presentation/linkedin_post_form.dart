@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/linkedin_posts_repository.dart';
@@ -29,7 +31,7 @@ Future<bool?> showLinkedInPostForm({
         clipBehavior: Clip.antiAlias,
         child: SizedBox(
           width: 620,
-          height: math.min(MediaQuery.sizeOf(context).height * 0.9, 760),
+          height: math.min(MediaQuery.sizeOf(context).height * 0.85, 680),
           child: LinkedInPostForm(repository: repository, post: post),
         ),
       );
@@ -115,31 +117,42 @@ class _LinkedInPostFormState extends State<LinkedInPostForm> {
     try {
       final existing = widget.post;
       if (existing == null) {
-        await widget.repository.createPost(
-          title: title,
-          description: description,
-          plannedDate: _plannedDate,
-          priority: _priority,
-          imageIdeas: imageIdeas,
-        );
+        await widget.repository
+            .createPost(
+              title: title,
+              description: description,
+              plannedDate: _plannedDate,
+              priority: _priority,
+              imageIdeas: imageIdeas,
+            )
+            .timeout(const Duration(seconds: 20));
       } else {
-        await widget.repository.updatePost(
-          LinkedInPost(
-            id: existing.id,
-            title: title,
-            description: description,
-            status: existing.status,
-            plannedDate: _plannedDate,
-            postedDate: _postedDate,
-            priority: _priority,
-            imageIdeas: imageIdeas,
-            createdAt: existing.createdAt,
-            updatedAt: existing.updatedAt,
-          ),
-        );
+        await widget.repository
+            .updatePost(
+              LinkedInPost(
+                id: existing.id,
+                title: title,
+                description: description,
+                status: existing.status,
+                plannedDate: _plannedDate,
+                postedDate: _postedDate,
+                priority: _priority,
+                imageIdeas: imageIdeas,
+                createdAt: existing.createdAt,
+                updatedAt: existing.updatedAt,
+              ),
+            )
+            .timeout(const Duration(seconds: 20));
       }
 
       if (mounted) Navigator.of(context).pop(true);
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _saveError =
+            'The save is taking too long. Check your connection and try again.';
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -163,7 +176,7 @@ class _LinkedInPostFormState extends State<LinkedInPostForm> {
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.close),
             tooltip: 'Close',
           ),
@@ -274,9 +287,16 @@ class _LinkedInPostFormState extends State<LinkedInPostForm> {
                     ? null
                     : _save,
                 child: _isSaving
-                    ? const SizedBox.square(
-                        dimension: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                    ? const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text('Saving…'),
+                        ],
                       )
                     : Text(_isEditing ? 'Save changes' : 'Add post'),
               ),
@@ -305,23 +325,23 @@ class _DateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: enabled ? onTap : null,
-      borderRadius: BorderRadius.circular(4),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          suffixIcon: onClear == null
-              ? const Icon(Icons.calendar_today_outlined, size: 20)
-              : IconButton(
-                  onPressed: enabled ? onClear : null,
-                  icon: const Icon(Icons.close, size: 18),
-                  tooltip: 'Clear $label',
-                ),
-        ),
-        isEmpty: value == null,
-        child: Text(value ?? 'Not set'),
+    return TextFormField(
+      key: ValueKey('$label-$value'),
+      initialValue: value,
+      readOnly: true,
+      enabled: enabled,
+      onTap: onTap,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: 'Not set',
+        border: const OutlineInputBorder(),
+        suffixIcon: onClear == null
+            ? const Icon(Icons.calendar_today_outlined, size: 20)
+            : IconButton(
+                onPressed: enabled ? onClear : null,
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: 'Clear $label',
+              ),
       ),
     );
   }

@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../data/linkedin_posts_repository.dart';
 import '../domain/linkedin_post.dart';
+import '../domain/linkedin_post_priority.dart';
+import '../domain/linkedin_post_status.dart';
 import 'linkedin_post_form.dart';
+import 'linkedin_post_status_actions.dart';
 
 Future<void> showLinkedInPostDetails({
   required BuildContext context,
@@ -29,7 +32,7 @@ Future<void> showLinkedInPostDetails({
         clipBehavior: Clip.antiAlias,
         child: SizedBox(
           width: 620,
-          height: math.min(MediaQuery.sizeOf(context).height * 0.85, 680),
+          height: math.min(MediaQuery.sizeOf(context).height * 0.8, 560),
           child: LinkedInPostDetails(repository: repository, post: post),
         ),
       );
@@ -53,6 +56,24 @@ class LinkedInPostDetails extends StatelessWidget {
       repository: repository,
       post: post,
     );
+    if (changed == true && context.mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _changeStatus(BuildContext context) async {
+    final bool? changed;
+    if (post.status == LinkedInPostStatus.planned) {
+      changed = await showMarkAsPostedDialog(
+        context: context,
+        repository: repository,
+        post: post,
+      );
+    } else {
+      changed = await showMoveBackToPlannedDialog(
+        context: context,
+        repository: repository,
+        post: post,
+      );
+    }
     if (changed == true && context.mounted) Navigator.of(context).pop();
   }
 
@@ -89,27 +110,53 @@ class LinkedInPostDetails extends StatelessWidget {
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           Wrap(
-            spacing: 24,
-            runSpacing: 12,
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              _DetailValue(label: 'Status', value: post.status.label),
-              _DetailValue(label: 'Priority', value: post.priority.label),
-              if (post.plannedDate != null)
-                _DetailValue(
-                  label: 'Planned date',
-                  value: _formatDate(context, post.plannedDate!),
-                ),
-              if (post.postedDate != null)
-                _DetailValue(
-                  label: 'Posted date',
-                  value: _formatDate(context, post.postedDate!),
-                ),
+              _StatusBadge(status: post.status),
+              _PriorityBadge(priority: post.priority),
             ],
           ),
+          if (post.plannedDate != null || post.postedDate != null) ...[
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 24,
+              runSpacing: 12,
+              children: [
+                if (post.plannedDate != null)
+                  _DateMetadata(
+                    label: 'Planned',
+                    value: _formatDate(context, post.plannedDate!),
+                  ),
+                if (post.postedDate != null)
+                  _DateMetadata(
+                    label: 'Posted',
+                    value: _formatDate(context, post.postedDate!),
+                  ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 22),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: post.status == LinkedInPostStatus.planned
+                ? FilledButton.tonalIcon(
+                    onPressed: () => _changeStatus(context),
+                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                    label: const Text('Mark as posted'),
+                  )
+                : OutlinedButton.icon(
+                    onPressed: () => _changeStatus(context),
+                    icon: const Icon(Icons.undo, size: 18),
+                    label: const Text('Move back to planned'),
+                  ),
+          ),
           if (post.description.isNotEmpty) ...[
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
             _DetailSection(label: 'Description', value: post.description),
           ],
           if (post.imageIdeas.isNotEmpty) ...[
@@ -122,29 +169,95 @@ class LinkedInPostDetails extends StatelessWidget {
   }
 }
 
-class _DetailValue extends StatelessWidget {
-  const _DetailValue({required this.label, required this.value});
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status});
+
+  final LinkedInPostStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isPosted = status == LinkedInPostStatus.posted;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isPosted
+            ? colorScheme.primaryContainer
+            : colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isPosted ? Icons.check_circle_outline : Icons.schedule,
+            size: 16,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status.label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PriorityBadge extends StatelessWidget {
+  const _PriorityBadge({required this.priority});
+
+  final LinkedInPostPriority priority;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: priority == LinkedInPostPriority.high
+            ? colorScheme.errorContainer
+            : colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Text(
+        '${priority.label} priority',
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+class _DateMetadata extends StatelessWidget {
+  const _DateMetadata({required this.label, required this.value});
 
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 140,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.calendar_today_outlined,
+          size: 17,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 7),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          const SizedBox(height: 3),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ],
-      ),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ],
     );
   }
 }
