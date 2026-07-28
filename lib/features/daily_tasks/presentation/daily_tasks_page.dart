@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../data/daily_tasks_repository.dart';
 import '../domain/daily_task.dart';
+import '../domain/daily_task_priority.dart';
 
 class DailyTasksPage extends StatefulWidget {
   const DailyTasksPage({required this.userId, super.key});
@@ -15,9 +16,6 @@ class DailyTasksPage extends StatefulWidget {
 
 class _DailyTasksPageState extends State<DailyTasksPage> {
   late final DailyTasksRepository _repository;
-  final _taskController = TextEditingController();
-  final _taskFocusNode = FocusNode();
-  bool _isAdding = false;
 
   @override
   void initState() {
@@ -25,26 +23,17 @@ class _DailyTasksPageState extends State<DailyTasksPage> {
     _repository = DailyTasksRepository(userId: widget.userId);
   }
 
-  @override
-  void dispose() {
-    _taskController.dispose();
-    _taskFocusNode.dispose();
-    super.dispose();
-  }
-
   Future<void> _addTask() async {
-    final title = _taskController.text.trim();
-    if (title.isEmpty || _isAdding) return;
+    final task = await showDialog<_TaskDraft>(
+      context: context,
+      builder: (context) => const _TaskDialog(),
+    );
+    if (task == null) return;
 
-    setState(() => _isAdding = true);
     try {
-      await _repository.createTask(title, DateTime.now());
-      _taskController.clear();
-      _taskFocusNode.requestFocus();
+      await _repository.createTask(task.title, DateTime.now(), task.priority);
     } catch (error) {
       if (mounted) _showError('Could not add the task.', error);
-    } finally {
-      if (mounted) setState(() => _isAdding = false);
     }
   }
 
@@ -70,7 +59,7 @@ class _DailyTasksPageState extends State<DailyTasksPage> {
                   title: 'Daily tasks',
                   subtitle: 'Plan today and keep yesterday in view.',
                   action: FilledButton.icon(
-                    onPressed: _taskFocusNode.requestFocus,
+                    onPressed: _addTask,
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('Add task'),
                   ),
@@ -91,10 +80,6 @@ class _DailyTasksPageState extends State<DailyTasksPage> {
                       return _TasksTimeline(
                         tasks: snapshot.data ?? const [],
                         repository: _repository,
-                        taskController: _taskController,
-                        taskFocusNode: _taskFocusNode,
-                        isAdding: _isAdding,
-                        onAddTask: _addTask,
                         onError: _showError,
                       );
                     },
@@ -113,19 +98,11 @@ class _TasksTimeline extends StatelessWidget {
   const _TasksTimeline({
     required this.tasks,
     required this.repository,
-    required this.taskController,
-    required this.taskFocusNode,
-    required this.isAdding,
-    required this.onAddTask,
     required this.onError,
   });
 
   final List<DailyTask> tasks;
   final DailyTasksRepository repository;
-  final TextEditingController taskController;
-  final FocusNode taskFocusNode;
-  final bool isAdding;
-  final VoidCallback onAddTask;
   final void Function(String message, Object error) onError;
 
   @override
@@ -153,10 +130,6 @@ class _TasksTimeline extends StatelessWidget {
           date: today,
           tasks: todayTasks,
           repository: repository,
-          taskController: taskController,
-          taskFocusNode: taskFocusNode,
-          isAdding: isAdding,
-          onAddTask: onAddTask,
           onError: onError,
           isToday: true,
         ),
@@ -214,10 +187,6 @@ class _DayCard extends StatelessWidget {
     required this.repository,
     required this.onError,
     required this.isToday,
-    this.taskController,
-    this.taskFocusNode,
-    this.isAdding = false,
-    this.onAddTask,
   });
 
   final DateTime date;
@@ -225,10 +194,6 @@ class _DayCard extends StatelessWidget {
   final DailyTasksRepository repository;
   final void Function(String message, Object error) onError;
   final bool isToday;
-  final TextEditingController? taskController;
-  final FocusNode? taskFocusNode;
-  final bool isAdding;
-  final VoidCallback? onAddTask;
 
   @override
   Widget build(BuildContext context) {
@@ -319,40 +284,6 @@ class _DayCard extends StatelessWidget {
                   onError: onError,
                 ),
             ],
-            if (isToday) ...[
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: taskController,
-                      focusNode: taskFocusNode,
-                      enabled: !isAdding,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => onAddTask?.call(),
-                      maxLength: 160,
-                      decoration: const InputDecoration(
-                        hintText: 'Add a one-line task…',
-                        counterText: '',
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  IconButton.filled(
-                    onPressed: isAdding ? null : onAddTask,
-                    tooltip: 'Add task',
-                    icon: isAdding
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.add),
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       ),
@@ -397,13 +328,20 @@ class _TaskRowState extends State<_TaskRow> {
   Future<void> _handleAction(_TaskAction action) async {
     switch (action) {
       case _TaskAction.edit:
-        final title = await showDialog<String>(
+        final task = await showDialog<_TaskDraft>(
           context: context,
-          builder: (context) => _EditTaskDialog(title: widget.task.title),
+          builder: (context) => _TaskDialog(
+            initialTitle: widget.task.title,
+            initialPriority: widget.task.priority,
+          ),
         );
-        if (title != null) {
+        if (task != null) {
           await _run(
-            () => widget.repository.updateTitle(widget.task.id, title),
+            () => widget.repository.updateTask(
+              widget.task.id,
+              task.title,
+              task.priority,
+            ),
             'Could not edit the task.',
           );
         }
@@ -445,87 +383,158 @@ class _TaskRowState extends State<_TaskRow> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Checkbox(
-            value: task.isCompleted,
-            onChanged: _isWorking
-                ? null
-                : (value) => _run(
-                    () =>
-                        widget.repository.setCompleted(task.id, value ?? false),
-                    'Could not update the task.',
-                  ),
-          ),
-          Expanded(
-            child: Text(
-              task.title,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: task.isCompleted
-                    ? colorScheme.onSurfaceVariant
-                    : colorScheme.onSurface,
-                decoration: task.isCompleted
-                    ? TextDecoration.lineThrough
-                    : null,
-              ),
-            ),
-          ),
-          if (widget.isHistory && !task.isCompleted) ...[
-            const SizedBox(width: 8),
-            if (task.rolledOverAt == null)
-              TextButton.icon(
-                onPressed: _isWorking
+          Row(
+            children: [
+              Checkbox(
+                value: task.isCompleted,
+                onChanged: _isWorking
                     ? null
-                    : () => _run(
-                        () => widget.repository.doToday(task),
-                        'Could not move the task to today.',
+                    : (value) => _run(
+                        () => widget.repository.setCompleted(
+                          task.id,
+                          value ?? false,
+                        ),
+                        'Could not update the task.',
                       ),
-                icon: const Icon(Icons.redo, size: 17),
-                label: const Text('Do it today'),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              Expanded(
                 child: Text(
-                  'Moved to today',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                  task.title,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: task.isCompleted
+                        ? colorScheme.onSurfaceVariant
+                        : colorScheme.onSurface,
+                    decoration: task.isCompleted
+                        ? TextDecoration.lineThrough
+                        : null,
                   ),
                 ),
               ),
-          ],
-          PopupMenuButton<_TaskAction>(
-            enabled: !_isWorking,
-            tooltip: 'Task actions',
-            onSelected: _handleAction,
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: _TaskAction.edit, child: Text('Edit')),
-              PopupMenuItem(value: _TaskAction.delete, child: Text('Delete')),
+              const SizedBox(width: 8),
+              _PriorityBadge(priority: task.priority),
+              PopupMenuButton<_TaskAction>(
+                enabled: !_isWorking,
+                tooltip: 'Task actions',
+                onSelected: _handleAction,
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: _TaskAction.edit, child: Text('Edit')),
+                  PopupMenuItem(
+                    value: _TaskAction.delete,
+                    child: Text('Delete'),
+                  ),
+                ],
+              ),
             ],
           ),
+          if (widget.isHistory && !task.isCompleted) ...[
+            Padding(
+              padding: const EdgeInsets.only(left: 48),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: task.rolledOverAt == null
+                    ? TextButton.icon(
+                        onPressed: _isWorking
+                            ? null
+                            : () => _run(
+                                () => widget.repository.doToday(task),
+                                'Could not move the task to today.',
+                              ),
+                        icon: const Icon(Icons.redo, size: 17),
+                        label: const Text('Do it today'),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: Text(
+                          'Moved to today',
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _EditTaskDialog extends StatefulWidget {
-  const _EditTaskDialog({required this.title});
+class _PriorityBadge extends StatelessWidget {
+  const _PriorityBadge({required this.priority});
 
-  final String title;
+  final DailyTaskPriority priority;
 
   @override
-  State<_EditTaskDialog> createState() => _EditTaskDialogState();
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final (background, foreground) = switch (priority) {
+      DailyTaskPriority.low => (
+        colorScheme.surfaceContainerHighest,
+        colorScheme.onSurfaceVariant,
+      ),
+      DailyTaskPriority.medium => (
+        colorScheme.secondaryContainer,
+        colorScheme.onSecondaryContainer,
+      ),
+      DailyTaskPriority.high => (
+        colorScheme.errorContainer,
+        colorScheme.onErrorContainer,
+      ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        priority.label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
 }
 
-class _EditTaskDialogState extends State<_EditTaskDialog> {
+class _TaskDraft {
+  const _TaskDraft({required this.title, required this.priority});
+
+  final String title;
+  final DailyTaskPriority priority;
+}
+
+class _TaskDialog extends StatefulWidget {
+  const _TaskDialog({
+    this.initialTitle = '',
+    this.initialPriority = DailyTaskPriority.medium,
+  });
+
+  final String initialTitle;
+  final DailyTaskPriority initialPriority;
+
+  @override
+  State<_TaskDialog> createState() => _TaskDialogState();
+}
+
+class _TaskDialogState extends State<_TaskDialog> {
   late final TextEditingController _controller;
+  late DailyTaskPriority _priority;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.title);
+    _controller = TextEditingController(text: widget.initialTitle);
+    _priority = widget.initialPriority;
   }
 
   @override
@@ -540,21 +549,41 @@ class _EditTaskDialogState extends State<_EditTaskDialog> {
       setState(() => _error = 'Enter a task.');
       return;
     }
-    Navigator.pop(context, title);
+    Navigator.pop(context, _TaskDraft(title: title, priority: _priority));
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Edit task'),
+      title: Text(widget.initialTitle.isEmpty ? 'Add task' : 'Edit task'),
       content: SizedBox(
         width: 420,
-        child: TextField(
-          controller: _controller,
-          autofocus: true,
-          maxLength: 160,
-          onSubmitted: (_) => _save(),
-          decoration: InputDecoration(labelText: 'Task', errorText: _error),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              maxLength: 160,
+              onSubmitted: (_) => _save(),
+              decoration: InputDecoration(labelText: 'Task', errorText: _error),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<DailyTaskPriority>(
+              initialValue: _priority,
+              decoration: const InputDecoration(labelText: 'Priority'),
+              items: [
+                for (final priority in DailyTaskPriority.values)
+                  DropdownMenuItem(
+                    value: priority,
+                    child: Text(priority.label),
+                  ),
+              ],
+              onChanged: (priority) {
+                if (priority != null) _priority = priority;
+              },
+            ),
+          ],
         ),
       ),
       actions: [
@@ -562,7 +591,10 @@ class _EditTaskDialogState extends State<_EditTaskDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        FilledButton(onPressed: _save, child: const Text('Save')),
+        FilledButton(
+          onPressed: _save,
+          child: Text(widget.initialTitle.isEmpty ? 'Add task' : 'Save'),
+        ),
       ],
     );
   }
