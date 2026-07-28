@@ -92,6 +92,7 @@ class _TodoFormState extends State<_TodoForm> {
       updatedAt: existing?.updatedAt ?? now,
       subtasks: existing?.subtasks ?? const [],
       isPinned: existing?.isPinned ?? false,
+      movedToDailyDate: existing?.movedToDailyDate,
     );
 
     try {

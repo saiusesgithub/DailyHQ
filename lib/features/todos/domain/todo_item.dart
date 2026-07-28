@@ -17,6 +17,7 @@ class TodoItem {
     required this.updatedAt,
     this.subtasks = const [],
     this.isPinned = false,
+    this.movedToDailyDate,
   });
 
   final String id;
@@ -31,6 +32,7 @@ class TodoItem {
   final DateTime updatedAt;
   final List<TodoSubtask> subtasks;
   final bool isPinned;
+  final DateTime? movedToDailyDate;
 
   factory TodoItem.fromDocument(
     QueryDocumentSnapshot<Map<String, dynamic>> document,
@@ -61,6 +63,9 @@ class TodoItem {
       updatedAt: _readDate(data['updatedAt']),
       subtasks: subtasks,
       isPinned: data['isPinned'] == true,
+      movedToDailyDate: data['movedToDailyDate'] is Timestamp
+          ? (data['movedToDailyDate'] as Timestamp).toDate()
+          : null,
     );
   }
 
@@ -75,6 +80,9 @@ class TodoItem {
       'isCompleted': isCompleted,
       'subtasks': subtasks.map((subtask) => subtask.toFirestore()).toList(),
       'isPinned': isPinned,
+      'movedToDailyDate': movedToDailyDate == null
+          ? null
+          : Timestamp.fromDate(movedToDailyDate!),
     };
   }
 

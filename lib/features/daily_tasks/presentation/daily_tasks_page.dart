@@ -4,6 +4,7 @@ import '../../../shared/widgets/page_header.dart';
 import '../data/daily_tasks_repository.dart';
 import '../domain/daily_task.dart';
 import '../domain/daily_task_priority.dart';
+import 'recurring_tasks_dialog.dart';
 
 class DailyTasksPage extends StatefulWidget {
   const DailyTasksPage({required this.userId, super.key});
@@ -62,20 +63,7 @@ class _DailyTasksPageState extends State<DailyTasksPage>
   }
 
   Future<void> _addRecurringTask() async {
-    final task = await showDialog<_TaskDraft>(
-      context: context,
-      builder: (context) => const _TaskDialog(
-        heading: 'Add recurring task',
-        actionLabel: 'Add recurring task',
-      ),
-    );
-    if (task == null) return;
-
-    try {
-      await _repository.createRecurringTask(task.title, task.priority);
-    } catch (error) {
-      if (mounted) _showError('Could not add the recurring task.', error);
-    }
+    await showAddRecurringTaskDialog(context: context, repository: _repository);
   }
 
   void _showError(String message, Object error) {
@@ -219,6 +207,18 @@ class _TasksTimeline extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
+        const SizedBox(height: 20),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: () => showRecurringTasksDialog(
+              context: context,
+              repository: repository,
+            ),
+            icon: const Icon(Icons.repeat, size: 18),
+            label: const Text('Show recurring tasks'),
+          ),
+        ),
       ],
     );
   }
@@ -527,7 +527,7 @@ class _TaskRowState extends State<_TaskRow> {
                     ? null
                     : (value) => _run(
                         () => widget.repository.setCompleted(
-                          task.id,
+                          task,
                           value ?? false,
                         ),
                         'Could not update the task.',
@@ -667,14 +667,10 @@ class _TaskDialog extends StatefulWidget {
   const _TaskDialog({
     this.initialTitle = '',
     this.initialPriority = DailyTaskPriority.medium,
-    this.heading,
-    this.actionLabel,
   });
 
   final String initialTitle;
   final DailyTaskPriority initialPriority;
-  final String? heading;
-  final String? actionLabel;
 
   @override
   State<_TaskDialog> createState() => _TaskDialogState();
@@ -710,10 +706,7 @@ class _TaskDialogState extends State<_TaskDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(
-        widget.heading ??
-            (widget.initialTitle.isEmpty ? 'Add task' : 'Edit task'),
-      ),
+      title: Text(widget.initialTitle.isEmpty ? 'Add task' : 'Edit task'),
       content: SizedBox(
         width: 420,
         child: Column(
@@ -751,10 +744,7 @@ class _TaskDialogState extends State<_TaskDialog> {
         ),
         FilledButton(
           onPressed: _save,
-          child: Text(
-            widget.actionLabel ??
-                (widget.initialTitle.isEmpty ? 'Add task' : 'Save'),
-          ),
+          child: Text(widget.initialTitle.isEmpty ? 'Add task' : 'Save'),
         ),
       ],
     );

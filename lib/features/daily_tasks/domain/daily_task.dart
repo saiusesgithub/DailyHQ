@@ -13,6 +13,7 @@ class DailyTask {
     required this.updatedAt,
     this.rolledOverAt,
     this.recurringTaskId,
+    this.sourceTodoId,
   });
 
   final String id;
@@ -24,6 +25,7 @@ class DailyTask {
   final DateTime updatedAt;
   final DateTime? rolledOverAt;
   final String? recurringTaskId;
+  final String? sourceTodoId;
 
   factory DailyTask.fromDocument(
     QueryDocumentSnapshot<Map<String, dynamic>> document,
@@ -43,6 +45,9 @@ class DailyTask {
           : null,
       recurringTaskId: data['recurringTaskId'] is String
           ? data['recurringTaskId'] as String
+          : null,
+      sourceTodoId: data['sourceTodoId'] is String
+          ? data['sourceTodoId'] as String
           : null,
     );
   }

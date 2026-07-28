@@ -384,7 +384,7 @@ class _QuadrantPanel extends StatelessWidget {
   }
 }
 
-enum _TodoAction { edit, subtasks, togglePin, delete }
+enum _TodoAction { edit, subtasks, moveToToday, togglePin, delete }
 
 class _TodoRow extends StatefulWidget {
   const _TodoRow({
@@ -407,7 +407,7 @@ class _TodoRowState extends State<_TodoRow> {
   Future<void> _setCompleted(bool value) async {
     setState(() => _isWorking = true);
     try {
-      await widget.repository.setCompleted(widget.todo.id, value);
+      await widget.repository.setCompleted(widget.todo, value);
     } catch (error) {
       _showError('Could not update this to-do. $error');
     } finally {
@@ -430,6 +430,16 @@ class _TodoRowState extends State<_TodoRow> {
           repository: widget.repository,
           todo: widget.todo,
         );
+        return;
+      case _TodoAction.moveToToday:
+        setState(() => _isWorking = true);
+        try {
+          await widget.repository.moveToToday(widget.todo);
+          if (mounted) setState(() => _isWorking = false);
+        } catch (error) {
+          _showError('Could not add this to today. $error');
+          if (mounted) setState(() => _isWorking = false);
+        }
         return;
       case _TodoAction.togglePin:
         setState(() => _isWorking = true);
@@ -497,6 +507,7 @@ class _TodoRowState extends State<_TodoRow> {
     final subtaskProgress = todo.subtasks.isEmpty
         ? 0.0
         : completedSubtasks / todo.subtasks.length;
+    final movedToday = _isToday(todo.movedToDailyDate);
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -565,6 +576,11 @@ class _TodoRowState extends State<_TodoRow> {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       _PriorityBadge(priority: todo.priority),
+                      if (movedToday)
+                        const _Metadata(
+                          icon: Icons.today_outlined,
+                          label: 'In Daily Tasks',
+                        ),
                       if (deadline != null)
                         _Metadata(icon: Icons.event_outlined, label: deadline),
                       if (!widget.compact)
@@ -609,6 +625,11 @@ class _TodoRowState extends State<_TodoRow> {
                 value: _TodoAction.subtasks,
                 child: Text('Subtasks'),
               ),
+              if (!movedToday && !todo.isCompleted)
+                const PopupMenuItem(
+                  value: _TodoAction.moveToToday,
+                  child: Text('Add to Daily Tasks'),
+                ),
               PopupMenuItem(
                 value: _TodoAction.togglePin,
                 child: Text(todo.isPinned ? 'Unpin' : 'Pin'),
@@ -637,6 +658,15 @@ class _TodoRowState extends State<_TodoRow> {
     if (todo.isImportant) return Icons.star_outline;
     if (todo.isUrgent) return Icons.schedule;
     return Icons.low_priority_outlined;
+  }
+
+  static bool _isToday(DateTime? date) {
+    if (date == null) return false;
+    final local = date.toLocal();
+    final today = DateTime.now();
+    return local.year == today.year &&
+        local.month == today.month &&
+        local.day == today.day;
   }
 }
 

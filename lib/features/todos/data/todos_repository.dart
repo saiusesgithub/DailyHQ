@@ -5,12 +5,19 @@ import '../domain/todo_subtask.dart';
 
 class TodosRepository {
   TodosRepository({required String userId, FirebaseFirestore? firestore})
-    : _todos = (firestore ?? FirebaseFirestore.instance)
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _todos = (firestore ?? FirebaseFirestore.instance)
           .collection('users')
           .doc(userId)
-          .collection('todos');
+          .collection('todos'),
+      _dailyTasks = (firestore ?? FirebaseFirestore.instance)
+          .collection('users')
+          .doc(userId)
+          .collection('daily_tasks');
 
+  final FirebaseFirestore _firestore;
   final CollectionReference<Map<String, dynamic>> _todos;
+  final CollectionReference<Map<String, dynamic>> _dailyTasks;
 
   Stream<List<TodoItem>> watchTodos() {
     return _todos.snapshots().map((snapshot) {
@@ -35,10 +42,29 @@ class TodosRepository {
     });
   }
 
-  Future<void> setCompleted(String todoId, bool isCompleted) {
-    return _todos.doc(todoId).update({
-      'isCompleted': isCompleted,
-      'updatedAt': FieldValue.serverTimestamp(),
+  Future<void> setCompleted(TodoItem todo, bool isCompleted) async {
+    final movedDate = todo.movedToDailyDate;
+    if (movedDate == null) {
+      await _todos.doc(todo.id).update({
+        'isCompleted': isCompleted,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+
+    final dailyTask = _dailyTasks.doc(_dailyTaskId(todo.id, movedDate));
+    await _firestore.runTransaction((transaction) async {
+      final dailySnapshot = await transaction.get(dailyTask);
+      transaction.update(_todos.doc(todo.id), {
+        'isCompleted': isCompleted,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (dailySnapshot.exists) {
+        transaction.update(dailyTask, {
+          'isCompleted': isCompleted,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
     });
   }
 
@@ -56,6 +82,41 @@ class TodosRepository {
       'subtasks': subtasks.map((subtask) => subtask.toFirestore()).toList(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<void> moveToToday(TodoItem todo) async {
+    final today = _dateOnly(DateTime.now());
+    final dailyTask = _dailyTasks.doc(_dailyTaskId(todo.id, today));
+    await _firestore.runTransaction((transaction) async {
+      final dailySnapshot = await transaction.get(dailyTask);
+      if (!dailySnapshot.exists) {
+        transaction.set(dailyTask, {
+          'title': todo.title,
+          'isCompleted': false,
+          'priority': todo.priority.name,
+          'plannedDate': Timestamp.fromDate(today),
+          'rolledOverAt': null,
+          'recurringTaskId': null,
+          'sourceTodoId': todo.id,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      transaction.update(_todos.doc(todo.id), {
+        'movedToDailyDate': Timestamp.fromDate(today),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  static DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  static String _dailyTaskId(String todoId, DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return 'todo_${todoId}_${date.year}-$month-$day';
   }
 
   static int _compareTodos(TodoItem first, TodoItem second) {

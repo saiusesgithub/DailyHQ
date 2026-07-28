@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../domain/daily_task.dart';
 import '../domain/daily_task_priority.dart';
+import '../domain/recurring_daily_task.dart';
 
 class DailyTasksRepository {
   DailyTasksRepository({required String userId, FirebaseFirestore? firestore})
@@ -13,11 +16,16 @@ class DailyTasksRepository {
       _recurringTasks = (firestore ?? FirebaseFirestore.instance)
           .collection('users')
           .doc(userId)
-          .collection('recurring_daily_tasks');
+          .collection('recurring_daily_tasks'),
+      _todos = (firestore ?? FirebaseFirestore.instance)
+          .collection('users')
+          .doc(userId)
+          .collection('todos');
 
   final FirebaseFirestore _firestore;
   final CollectionReference<Map<String, dynamic>> _tasks;
   final CollectionReference<Map<String, dynamic>> _recurringTasks;
+  final CollectionReference<Map<String, dynamic>> _todos;
 
   Stream<List<DailyTask>> watchTasks() {
     return _tasks.snapshots().map((snapshot) {
@@ -27,6 +35,24 @@ class DailyTasksRepository {
         return dateOrder != 0
             ? dateOrder
             : first.createdAt.compareTo(second.createdAt);
+      });
+      return tasks;
+    });
+  }
+
+  Stream<List<RecurringDailyTask>> watchRecurringTasks() {
+    return _recurringTasks.snapshots().map((snapshot) {
+      final tasks = snapshot.docs
+          .map(RecurringDailyTask.fromDocument)
+          .where((task) => task.title.trim().isNotEmpty)
+          .toList();
+      tasks.sort((first, second) {
+        final frequencyOrder = first.frequency.index.compareTo(
+          second.frequency.index,
+        );
+        return frequencyOrder != 0
+            ? frequencyOrder
+            : first.title.toLowerCase().compareTo(second.title.toLowerCase());
       });
       return tasks;
     });
@@ -44,6 +70,7 @@ class DailyTasksRepository {
       'plannedDate': Timestamp.fromDate(_dateOnly(date)),
       'rolledOverAt': null,
       'recurringTaskId': null,
+      'sourceTodoId': null,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -61,40 +88,67 @@ class DailyTasksRepository {
     });
   }
 
-  Future<void> setCompleted(String taskId, bool isCompleted) {
-    return _tasks.doc(taskId).update({
-      'isCompleted': isCompleted,
-      'updatedAt': FieldValue.serverTimestamp(),
+  Future<void> setCompleted(DailyTask task, bool isCompleted) async {
+    final sourceTodoId = task.sourceTodoId;
+    if (sourceTodoId == null) {
+      await _tasks.doc(task.id).update({
+        'isCompleted': isCompleted,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+
+    final todo = _todos.doc(sourceTodoId);
+    await _firestore.runTransaction((transaction) async {
+      final todoSnapshot = await transaction.get(todo);
+      transaction.update(_tasks.doc(task.id), {
+        'isCompleted': isCompleted,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      if (todoSnapshot.exists) {
+        transaction.update(todo, {
+          'isCompleted': isCompleted,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
     });
   }
 
   Future<void> deleteTask(String taskId) => _tasks.doc(taskId).delete();
 
-  Future<void> createRecurringTask(
-    String title,
-    DailyTaskPriority priority,
-  ) async {
+  Future<void> createRecurringTask({
+    required String title,
+    required DailyTaskPriority priority,
+    required RecurringTaskFrequency frequency,
+    int? dayOfMonth,
+  }) async {
     final today = _dateOnly(DateTime.now());
     final recurringTask = _recurringTasks.doc();
-    final occurrence = _tasks.doc(_occurrenceId(recurringTask.id, today));
     final batch = _firestore.batch();
+    final isDueToday = _isDueOnDate(frequency, dayOfMonth, today);
 
     batch.set(recurringTask, {
       'title': title,
       'priority': priority.name,
-      'lastGeneratedDate': Timestamp.fromDate(today),
+      'frequency': frequency.name,
+      'dayOfMonth': frequency == RecurringTaskFrequency.monthly
+          ? dayOfMonth
+          : null,
+      'lastGeneratedDate': isDueToday ? Timestamp.fromDate(today) : null,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
-    batch.set(
-      occurrence,
-      _recurringOccurrence(
-        recurringTaskId: recurringTask.id,
-        title: title,
-        priority: priority,
-        date: today,
-      ),
-    );
+    if (isDueToday) {
+      batch.set(
+        _tasks.doc(_occurrenceId(recurringTask.id, today)),
+        _recurringOccurrence(
+          recurringTaskId: recurringTask.id,
+          title: title,
+          priority: priority,
+          date: today,
+        ),
+      );
+    }
 
     await batch.commit();
   }
@@ -107,6 +161,12 @@ class DailyTasksRepository {
 
     for (final template in templates.docs) {
       final data = template.data();
+      final frequency = RecurringTaskFrequency.fromFirestore(data['frequency']);
+      final dayOfMonth = data['dayOfMonth'] is int
+          ? data['dayOfMonth'] as int
+          : null;
+      if (!_isDueOnDate(frequency, dayOfMonth, today)) continue;
+
       final lastGenerated = data['lastGeneratedDate'];
       if (lastGenerated is Timestamp &&
           _dateOnly(lastGenerated.toDate()).isAtSameMomentAs(today)) {
@@ -156,6 +216,7 @@ class DailyTasksRepository {
       'plannedDate': Timestamp.fromDate(_dateOnly(DateTime.now())),
       'rolledOverAt': null,
       'recurringTaskId': null,
+      'sourceTodoId': null,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -173,6 +234,17 @@ class DailyTasksRepository {
     return '${recurringTaskId}_${date.year}-$month-$day';
   }
 
+  static bool _isDueOnDate(
+    RecurringTaskFrequency frequency,
+    int? dayOfMonth,
+    DateTime date,
+  ) {
+    if (frequency == RecurringTaskFrequency.daily) return true;
+    final requestedDay = (dayOfMonth ?? 1).clamp(1, 31);
+    final lastDay = DateTime(date.year, date.month + 1, 0).day;
+    return date.day == math.min(requestedDay, lastDay);
+  }
+
   static Map<String, Object?> _recurringOccurrence({
     required String recurringTaskId,
     required String title,
@@ -186,6 +258,7 @@ class DailyTasksRepository {
       'plannedDate': Timestamp.fromDate(date),
       'rolledOverAt': null,
       'recurringTaskId': recurringTaskId,
+      'sourceTodoId': null,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
