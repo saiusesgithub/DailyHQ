@@ -1,0 +1,6 @@
+- Test Shortcut on pc (directly open journal) - quick capture thoughts and journal
+- add a notifiation panel icon (or) widget on android to quick capture thoghts and journal
+- make it open source (prepare modules for opensource) + add documentation / readme properly and version the project (v1.0) , launch it properly
+- one calendar for planning stuff (one overall calendar)
+- alarm / reminder (full screen or atleast notification with sound)
+- timetable feature
