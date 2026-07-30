@@ -120,6 +120,41 @@ class _TodosList extends StatefulWidget {
 
 class _TodosListState extends State<_TodosList> {
   bool _showCompleted = false;
+  late List<TodoItem> _active;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncActive();
+  }
+
+  @override
+  void didUpdateWidget(_TodosList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncActive();
+  }
+
+  void _syncActive() {
+    _active = widget.todos.where((todo) => !todo.isCompleted).toList();
+  }
+
+  Future<void> _reorder(int oldIndex, int newIndex) async {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final todo = _active.removeAt(oldIndex);
+      _active.insert(newIndex, todo);
+    });
+    try {
+      await widget.repository.reorderTodos(_active);
+    } catch (error) {
+      if (!mounted) return;
+      _syncActive();
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save the new order. $error')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +166,7 @@ class _TodosListState extends State<_TodosList> {
       );
     }
 
-    final active = todos.where((todo) => !todo.isCompleted).toList();
+    final active = _active;
     final completed = todos.where((todo) => todo.isCompleted).toList();
     return ListView(
       padding: const EdgeInsets.only(bottom: 32),
@@ -164,17 +199,24 @@ class _TodosListState extends State<_TodosList> {
                     ),
                   ),
                 )
-              : Column(
-                  children: [
-                    for (var index = 0; index < active.length; index++) ...[
+              : ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: false,
+                  onReorder: _reorder,
+                  itemCount: active.length,
+                  itemBuilder: (context, index) => Column(
+                    key: ValueKey(active[index].id),
+                    children: [
                       _TodoRow(
                         todo: active[index],
                         repository: widget.repository,
+                        reorderIndex: index,
                       ),
                       if (index != active.length - 1)
                         const Divider(height: 1, indent: 56),
                     ],
-                  ],
+                  ),
                 ),
         ),
         if (completed.isNotEmpty) ...[
@@ -384,18 +426,20 @@ class _QuadrantPanel extends StatelessWidget {
   }
 }
 
-enum _TodoAction { edit, moveToToday, togglePin, delete }
+enum _TodoAction { edit, addToToday, addToTomorrow, togglePin, delete }
 
 class _TodoRow extends StatefulWidget {
   const _TodoRow({
     required this.todo,
     required this.repository,
     this.compact = false,
+    this.reorderIndex,
   });
 
   final TodoItem todo;
   final TodosRepository repository;
   final bool compact;
+  final int? reorderIndex;
 
   @override
   State<_TodoRow> createState() => _TodoRowState();
@@ -425,13 +469,26 @@ class _TodoRowState extends State<_TodoRow> {
           todo: widget.todo,
         );
         return;
-      case _TodoAction.moveToToday:
+      case _TodoAction.addToToday:
         setState(() => _isWorking = true);
         try {
-          await widget.repository.moveToToday(widget.todo);
+          await widget.repository.addToDailyPlan(widget.todo, DateTime.now());
           if (mounted) setState(() => _isWorking = false);
         } catch (error) {
           _showError('Could not add this to today. $error');
+          if (mounted) setState(() => _isWorking = false);
+        }
+        return;
+      case _TodoAction.addToTomorrow:
+        setState(() => _isWorking = true);
+        try {
+          await widget.repository.addToDailyPlan(
+            widget.todo,
+            DateTime.now().add(const Duration(days: 1)),
+          );
+          if (mounted) setState(() => _isWorking = false);
+        } catch (error) {
+          _showError('Could not add this to tomorrow. $error');
           if (mounted) setState(() => _isWorking = false);
         }
         return;
@@ -502,6 +559,7 @@ class _TodoRowState extends State<_TodoRow> {
         ? 0.0
         : completedSubtasks / todo.subtasks.length;
     final movedToday = _isToday(todo.movedToDailyDate);
+    final movedTomorrow = _isTomorrow(todo.movedToDailyDate);
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -573,7 +631,12 @@ class _TodoRowState extends State<_TodoRow> {
                       if (movedToday)
                         const _Metadata(
                           icon: Icons.today_outlined,
-                          label: 'In Daily Tasks',
+                          label: 'In today’s plan',
+                        ),
+                      if (movedTomorrow)
+                        const _Metadata(
+                          icon: Icons.event_outlined,
+                          label: 'In tomorrow’s plan',
                         ),
                       if (deadline != null)
                         _Metadata(icon: Icons.event_outlined, label: deadline),
@@ -629,16 +692,33 @@ class _TodoRowState extends State<_TodoRow> {
               ),
             ),
           ),
+          if (widget.reorderIndex case final index?)
+            ReorderableDragStartListener(
+              index: index,
+              child: const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: IconButton(
+                  onPressed: null,
+                  tooltip: 'Drag to reorder',
+                  icon: Icon(Icons.drag_indicator),
+                ),
+              ),
+            ),
           PopupMenuButton<_TodoAction>(
             enabled: !_isWorking,
             tooltip: 'To-do actions',
             onSelected: _handleAction,
             itemBuilder: (context) => [
               const PopupMenuItem(value: _TodoAction.edit, child: Text('Edit')),
-              if (!movedToday && !todo.isCompleted)
+              if (!todo.isCompleted)
                 const PopupMenuItem(
-                  value: _TodoAction.moveToToday,
-                  child: Text('Add to Daily Tasks'),
+                  value: _TodoAction.addToToday,
+                  child: Text('Add to today'),
+                ),
+              if (!todo.isCompleted)
+                const PopupMenuItem(
+                  value: _TodoAction.addToTomorrow,
+                  child: Text('Add to tomorrow'),
                 ),
               PopupMenuItem(
                 value: _TodoAction.togglePin,
@@ -677,6 +757,15 @@ class _TodoRowState extends State<_TodoRow> {
     return local.year == today.year &&
         local.month == today.month &&
         local.day == today.day;
+  }
+
+  static bool _isTomorrow(DateTime? date) {
+    if (date == null) return false;
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final local = date.toLocal();
+    return local.year == tomorrow.year &&
+        local.month == tomorrow.month &&
+        local.day == tomorrow.day;
   }
 }
 

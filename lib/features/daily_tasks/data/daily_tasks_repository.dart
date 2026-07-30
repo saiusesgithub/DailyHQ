@@ -98,20 +98,24 @@ class DailyTasksRepository {
       return;
     }
 
-    final todo = _todos.doc(sourceTodoId);
-    await _firestore.runTransaction((transaction) async {
-      final todoSnapshot = await transaction.get(todo);
-      transaction.update(_tasks.doc(task.id), {
+    final linkedTasks = await _tasks
+        .where('sourceTodoId', isEqualTo: sourceTodoId)
+        .get();
+    final todo = await _todos.doc(sourceTodoId).get();
+    final batch = _firestore.batch();
+    for (final linkedTask in linkedTasks.docs) {
+      batch.update(linkedTask.reference, {
         'isCompleted': isCompleted,
         'updatedAt': FieldValue.serverTimestamp(),
       });
-      if (todoSnapshot.exists) {
-        transaction.update(todo, {
-          'isCompleted': isCompleted,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      }
-    });
+    }
+    if (todo.exists) {
+      batch.update(todo.reference, {
+        'isCompleted': isCompleted,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
   }
 
   Future<void> deleteTask(String taskId) => _tasks.doc(taskId).delete();

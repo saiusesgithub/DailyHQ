@@ -18,6 +18,7 @@ class TodoItem {
     this.subtasks = const [],
     this.isPinned = false,
     this.movedToDailyDate,
+    this.sortOrder,
   });
 
   final String id;
@@ -33,6 +34,7 @@ class TodoItem {
   final List<TodoSubtask> subtasks;
   final bool isPinned;
   final DateTime? movedToDailyDate;
+  final int? sortOrder;
 
   factory TodoItem.fromDocument(
     QueryDocumentSnapshot<Map<String, dynamic>> document,
@@ -66,6 +68,9 @@ class TodoItem {
       movedToDailyDate: data['movedToDailyDate'] is Timestamp
           ? (data['movedToDailyDate'] as Timestamp).toDate()
           : null,
+      sortOrder: data['sortOrder'] is num
+          ? (data['sortOrder'] as num).toInt()
+          : null,
     );
   }
 
@@ -83,6 +88,7 @@ class TodoItem {
       'movedToDailyDate': movedToDailyDate == null
           ? null
           : Timestamp.fromDate(movedToDailyDate!),
+      'sortOrder': sortOrder,
     };
   }
 

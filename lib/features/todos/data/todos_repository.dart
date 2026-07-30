@@ -43,29 +43,21 @@ class TodosRepository {
   }
 
   Future<void> setCompleted(TodoItem todo, bool isCompleted) async {
-    final movedDate = todo.movedToDailyDate;
-    if (movedDate == null) {
-      await _todos.doc(todo.id).update({
-        'isCompleted': isCompleted,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      return;
-    }
-
-    final dailyTask = _dailyTasks.doc(_dailyTaskId(todo.id, movedDate));
-    await _firestore.runTransaction((transaction) async {
-      final dailySnapshot = await transaction.get(dailyTask);
-      transaction.update(_todos.doc(todo.id), {
-        'isCompleted': isCompleted,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      if (dailySnapshot.exists) {
-        transaction.update(dailyTask, {
-          'isCompleted': isCompleted,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      }
+    final linkedTasks = await _dailyTasks
+        .where('sourceTodoId', isEqualTo: todo.id)
+        .get();
+    final batch = _firestore.batch();
+    batch.update(_todos.doc(todo.id), {
+      'isCompleted': isCompleted,
+      'updatedAt': FieldValue.serverTimestamp(),
     });
+    for (final task in linkedTasks.docs) {
+      batch.update(task.reference, {
+        'isCompleted': isCompleted,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
   }
 
   Future<void> deleteTodo(String todoId) => _todos.doc(todoId).delete();
@@ -84,9 +76,9 @@ class TodosRepository {
     });
   }
 
-  Future<void> moveToToday(TodoItem todo) async {
-    final today = _dateOnly(DateTime.now());
-    final dailyTask = _dailyTasks.doc(_dailyTaskId(todo.id, today));
+  Future<void> addToDailyPlan(TodoItem todo, DateTime date) async {
+    final plannedDate = _dateOnly(date);
+    final dailyTask = _dailyTasks.doc(_dailyTaskId(todo.id, plannedDate));
     await _firestore.runTransaction((transaction) async {
       final dailySnapshot = await transaction.get(dailyTask);
       if (!dailySnapshot.exists) {
@@ -94,7 +86,7 @@ class TodosRepository {
           'title': todo.title,
           'isCompleted': false,
           'priority': todo.priority.name,
-          'plannedDate': Timestamp.fromDate(today),
+          'plannedDate': Timestamp.fromDate(plannedDate),
           'rolledOverAt': null,
           'recurringTaskId': null,
           'sourceTodoId': todo.id,
@@ -103,10 +95,21 @@ class TodosRepository {
         });
       }
       transaction.update(_todos.doc(todo.id), {
-        'movedToDailyDate': Timestamp.fromDate(today),
+        'movedToDailyDate': Timestamp.fromDate(plannedDate),
         'updatedAt': FieldValue.serverTimestamp(),
       });
     });
+  }
+
+  Future<void> reorderTodos(List<TodoItem> todos) async {
+    final batch = _firestore.batch();
+    for (var index = 0; index < todos.length; index++) {
+      batch.update(_todos.doc(todos[index].id), {
+        'sortOrder': index,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
   }
 
   static DateTime _dateOnly(DateTime date) {
@@ -122,6 +125,14 @@ class TodosRepository {
   static int _compareTodos(TodoItem first, TodoItem second) {
     if (first.isCompleted != second.isCompleted) {
       return first.isCompleted ? 1 : -1;
+    }
+    final firstOrder = first.sortOrder;
+    final secondOrder = second.sortOrder;
+    if (firstOrder != null || secondOrder != null) {
+      if (firstOrder == null) return 1;
+      if (secondOrder == null) return -1;
+      final order = firstOrder.compareTo(secondOrder);
+      if (order != 0) return order;
     }
     if (first.isPinned != second.isPinned) {
       return first.isPinned ? -1 : 1;
