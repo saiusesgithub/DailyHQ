@@ -27,6 +27,18 @@ void main() {
 
     expect(orderPostedPosts(posts).map((post) => post.id), ['newer', 'older']);
   });
+
+  test('saved manual order takes precedence over date order', () {
+    final posts = [
+      _post(id: 'earlier-date', plannedDay: 1, sortOrder: 1),
+      _post(id: 'dragged-first', plannedDay: 20, sortOrder: 0),
+    ];
+
+    expect(orderPlannedPosts(posts).map((post) => post.id), [
+      'dragged-first',
+      'earlier-date',
+    ]);
+  });
 }
 
 LinkedInPost _post({
@@ -35,6 +47,7 @@ LinkedInPost _post({
   int? plannedDay,
   int? postedDay,
   int createdDay = 1,
+  int? sortOrder,
 }) {
   return LinkedInPost(
     id: id,
@@ -47,5 +60,6 @@ LinkedInPost _post({
     imageIdeas: '',
     createdAt: DateTime(2026, 7, createdDay),
     updatedAt: DateTime(2026, 7, createdDay),
+    sortOrder: sortOrder,
   );
 }

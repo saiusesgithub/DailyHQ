@@ -15,6 +15,7 @@ class LinkedInPost {
     required this.imageIdeas,
     required this.createdAt,
     required this.updatedAt,
+    this.sortOrder,
   });
 
   final String id;
@@ -27,6 +28,7 @@ class LinkedInPost {
   final String imageIdeas;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int? sortOrder;
 
   factory LinkedInPost.fromDocument(
     DocumentSnapshot<Map<String, dynamic>> document,
@@ -45,6 +47,9 @@ class LinkedInPost {
       imageIdeas: _readString(data['imageIdeas']),
       createdAt: _readDate(data['createdAt']) ?? fallbackDate,
       updatedAt: _readDate(data['updatedAt']) ?? fallbackDate,
+      sortOrder: data['sortOrder'] is num
+          ? (data['sortOrder'] as num).toInt()
+          : null,
     );
   }
 
@@ -57,6 +62,7 @@ class LinkedInPost {
       'postedDate': _toTimestamp(postedDate),
       'priority': priority.name,
       'imageIdeas': imageIdeas,
+      'sortOrder': sortOrder,
     };
   }
 

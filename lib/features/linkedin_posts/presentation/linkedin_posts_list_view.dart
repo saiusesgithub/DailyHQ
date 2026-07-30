@@ -61,7 +61,7 @@ class _LinkedInPostsListViewState extends State<LinkedInPostsListView> {
   }
 }
 
-class _PostSection extends StatelessWidget {
+class _PostSection extends StatefulWidget {
   const _PostSection({
     required this.title,
     required this.count,
@@ -83,6 +83,42 @@ class _PostSection extends StatelessWidget {
   final VoidCallback? onToggle;
 
   @override
+  State<_PostSection> createState() => _PostSectionState();
+}
+
+class _PostSectionState extends State<_PostSection> {
+  late List<LinkedInPost> _posts;
+
+  @override
+  void initState() {
+    super.initState();
+    _posts = [...widget.posts];
+  }
+
+  @override
+  void didUpdateWidget(_PostSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _posts = [...widget.posts];
+  }
+
+  Future<void> _reorder(int oldIndex, int newIndex) async {
+    setState(() {
+      if (newIndex > oldIndex) newIndex -= 1;
+      final post = _posts.removeAt(oldIndex);
+      _posts.insert(newIndex, post);
+    });
+    try {
+      await widget.repository.reorderPosts(_posts);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _posts = [...widget.posts]);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save the new order. $error')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -92,7 +128,7 @@ class _PostSection extends StatelessWidget {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: collapsible ? onToggle : null,
+            onTap: widget.collapsible ? widget.onToggle : null,
             borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -100,7 +136,7 @@ class _PostSection extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      title,
+                      widget.title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -116,14 +152,14 @@ class _PostSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      '$count',
+                      '${widget.count}',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ),
-                  if (collapsible) ...[
+                  if (widget.collapsible) ...[
                     const SizedBox(width: 8),
                     Icon(
-                      expanded ? Icons.expand_less : Icons.expand_more,
+                      widget.expanded ? Icons.expand_less : Icons.expand_more,
                       color: colorScheme.onSurfaceVariant,
                     ),
                   ],
@@ -132,7 +168,7 @@ class _PostSection extends StatelessWidget {
             ),
           ),
         ),
-        if (expanded) ...[
+        if (widget.expanded) ...[
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
@@ -140,26 +176,33 @@ class _PostSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             clipBehavior: Clip.antiAlias,
-            child: posts.isEmpty
+            child: _posts.isEmpty
                 ? Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(
-                      emptyMessage,
+                      widget.emptyMessage,
                       style: TextStyle(color: colorScheme.onSurfaceVariant),
                       textAlign: TextAlign.center,
                     ),
                   )
-                : Column(
-                    children: [
-                      for (var index = 0; index < posts.length; index++) ...[
+                : ReorderableListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    buildDefaultDragHandles: false,
+                    onReorder: _reorder,
+                    itemCount: _posts.length,
+                    itemBuilder: (context, index) => Column(
+                      key: ValueKey(_posts[index].id),
+                      children: [
                         _PostPreview(
-                          post: posts[index],
-                          repository: repository,
+                          post: _posts[index],
+                          repository: widget.repository,
+                          reorderIndex: index,
                         ),
-                        if (index != posts.length - 1)
+                        if (index != _posts.length - 1)
                           Divider(height: 1, color: colorScheme.outlineVariant),
                       ],
-                    ],
+                    ),
                   ),
           ),
         ],
@@ -171,10 +214,15 @@ class _PostSection extends StatelessWidget {
 enum _PostAction { edit, changeStatus, delete }
 
 class _PostPreview extends StatelessWidget {
-  const _PostPreview({required this.post, required this.repository});
+  const _PostPreview({
+    required this.post,
+    required this.repository,
+    required this.reorderIndex,
+  });
 
   final LinkedInPost post;
   final LinkedInPostsRepository repository;
+  final int reorderIndex;
 
   bool get _isPosted => post.status == LinkedInPostStatus.posted;
 
@@ -369,6 +417,14 @@ class _PostPreview extends StatelessWidget {
                       ),
                     ],
                   ],
+                ),
+              ),
+              ReorderableDragStartListener(
+                index: reorderIndex,
+                child: const IconButton(
+                  onPressed: null,
+                  tooltip: 'Drag to reorder',
+                  icon: Icon(Icons.drag_indicator),
                 ),
               ),
               PopupMenuButton<_PostAction>(

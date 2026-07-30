@@ -8,11 +8,13 @@ class LinkedInPostsRepository {
   LinkedInPostsRepository({
     required String userId,
     FirebaseFirestore? firestore,
-  }) : _posts = (firestore ?? FirebaseFirestore.instance)
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _posts = (firestore ?? FirebaseFirestore.instance)
            .collection('users')
            .doc(userId)
            .collection('linkedin_posts');
 
+  final FirebaseFirestore _firestore;
   final CollectionReference<Map<String, dynamic>> _posts;
 
   Stream<List<LinkedInPost>> watchPosts() {
@@ -52,6 +54,7 @@ class LinkedInPostsRepository {
     await _posts.doc(postId).update({
       'status': LinkedInPostStatus.posted.name,
       'postedDate': Timestamp.fromDate(postedDate),
+      'sortOrder': null,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -60,12 +63,24 @@ class LinkedInPostsRepository {
     await _posts.doc(postId).update({
       'status': LinkedInPostStatus.planned.name,
       'postedDate': null,
+      'sortOrder': null,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
   Future<void> deletePost(String postId) {
     return _posts.doc(postId).delete();
+  }
+
+  Future<void> reorderPosts(List<LinkedInPost> posts) async {
+    final batch = _firestore.batch();
+    for (var index = 0; index < posts.length; index++) {
+      batch.update(_posts.doc(posts[index].id), {
+        'sortOrder': index,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
   }
 
   Timestamp? _timestampOrNull(DateTime? value) {

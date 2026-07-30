@@ -140,6 +140,7 @@ class _LinkedInPostFormState extends State<LinkedInPostForm> {
                 imageIdeas: imageIdeas,
                 createdAt: existing.createdAt,
                 updatedAt: existing.updatedAt,
+                sortOrder: existing.sortOrder,
               ),
             )
             .timeout(const Duration(seconds: 20));
