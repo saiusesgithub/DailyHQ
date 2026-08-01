@@ -5,17 +5,22 @@ import '../domain/journal_time_block.dart';
 Future<JournalTimeBlock?> showTimeBlockForm({
   required BuildContext context,
   JournalTimeBlock? timeBlock,
+  int? initialStartMinutes,
 }) {
   return showDialog<JournalTimeBlock>(
     context: context,
-    builder: (context) => _TimeBlockForm(timeBlock: timeBlock),
+    builder: (context) => _TimeBlockForm(
+      timeBlock: timeBlock,
+      initialStartMinutes: initialStartMinutes,
+    ),
   );
 }
 
 class _TimeBlockForm extends StatefulWidget {
-  const _TimeBlockForm({this.timeBlock});
+  const _TimeBlockForm({this.timeBlock, this.initialStartMinutes});
 
   final JournalTimeBlock? timeBlock;
+  final int? initialStartMinutes;
 
   @override
   State<_TimeBlockForm> createState() => _TimeBlockFormState();
@@ -35,10 +40,14 @@ class _TimeBlockFormState extends State<_TimeBlockForm> {
     super.initState();
     final block = widget.timeBlock;
     final now = TimeOfDay.now();
-    final startMinutes = block?.startMinutes ?? now.hour * 60 + now.minute;
-    final defaultEnd = (startMinutes + 30).clamp(0, 1439);
+    final nowMinutes = now.hour * 60 + now.minute;
+    final suggestedStart = widget.initialStartMinutes;
+    final defaultStart = suggestedStart != null && suggestedStart < nowMinutes
+        ? suggestedStart
+        : (nowMinutes - 30).clamp(0, 1439);
+    final startMinutes = block?.startMinutes ?? defaultStart;
     _startTime = _fromMinutes(startMinutes);
-    _endTime = _fromMinutes(block?.endMinutes ?? defaultEnd);
+    _endTime = _fromMinutes(block?.endMinutes ?? nowMinutes);
     _activityController = TextEditingController(text: block?.activity ?? '');
     _detailsController = TextEditingController(text: block?.details ?? '');
     _categoryController = TextEditingController(text: block?.category ?? '');
@@ -162,6 +171,7 @@ class _TimeBlockFormState extends State<_TimeBlockForm> {
                 TextFormField(
                   controller: _activityController,
                   autofocus: true,
+                  selectAllOnFocus: false,
                   maxLength: 160,
                   decoration: const InputDecoration(
                     labelText: 'Activity *',
@@ -174,6 +184,7 @@ class _TimeBlockFormState extends State<_TimeBlockForm> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _categoryController,
+                  selectAllOnFocus: false,
                   textCapitalization: TextCapitalization.words,
                   decoration: const InputDecoration(
                     labelText: 'Type *',
@@ -186,6 +197,7 @@ class _TimeBlockFormState extends State<_TimeBlockForm> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _detailsController,
+                  selectAllOnFocus: false,
                   minLines: 3,
                   maxLines: 7,
                   decoration: const InputDecoration(
