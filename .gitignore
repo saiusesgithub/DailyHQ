@@ -43,3 +43,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local Firebase state and private signing credentials
+.firebase/
+firebase-debug.log*
+**/service-account*.json
+**/*-firebase-adminsdk-*.json
+/android/key.properties
+*.jks
+*.keystore
+*.pfx

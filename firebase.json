@@ -1,25 +1,5 @@
 {
   "firestore": {
     "rules": "firestore.rules"
-  },
-  "flutter": {
-    "platforms": {
-      "android": {
-        "default": {
-          "projectId": "dailyhq-19b3f",
-          "appId": "1:686706967440:android:b6a5ea185ec372806ee915",
-          "fileOutput": "android/app/google-services.json"
-        }
-      },
-      "dart": {
-        "lib/firebase_options.dart": {
-          "projectId": "dailyhq-19b3f",
-          "configurations": {
-            "android": "1:686706967440:android:b6a5ea185ec372806ee915",
-            "windows": "1:686706967440:web:1ac4a94e27a27c236ee915"
-          }
-        }
-      }
-    }
   }
 }
