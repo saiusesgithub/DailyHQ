@@ -2,10 +2,15 @@ name: Build DailyHQ
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   android:
@@ -42,11 +47,14 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
+      - name: Name Android release artifact
+        run: cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/DailyHQ-Android.apk
+
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: dailyhq-android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/DailyHQ-Android.apk
           if-no-files-found: error
           retention-days: 14
 
@@ -86,3 +94,50 @@ jobs:
           path: build/installer/DailyHQ-Setup.exe
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - android
+      - windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate tag against application version
+        shell: bash
+        run: |
+          app_version="$(sed -n 's/^version: \([0-9][^+]*\).*/\1/p' pubspec.yaml)"
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ -z "$app_version" ] || [ "$tag_version" != "$app_version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match pubspec version $app_version."
+            exit 1
+          fi
+
+      - name: Download Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dailyhq-android-apk
+          path: release-assets
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dailyhq-windows-installer
+          path: release-assets
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          release-assets/DailyHQ-Android.apk
+          release-assets/DailyHQ-Setup.exe
+          --verify-tag
+          --generate-notes
+          --title "DailyHQ $GITHUB_REF_NAME"
