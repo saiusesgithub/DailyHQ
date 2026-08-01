@@ -2,10 +2,20 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../../shell/app_shell.dart';
+import '../../../shell/navigation_destination.dart';
 import 'auth_page.dart';
 
 class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
+  const AuthGate({
+    this.initialDestination = AppDestination.dashboard,
+    this.focusThoughtCapture = false,
+    this.openJournalCapture = false,
+    super.key,
+  });
+
+  final AppDestination initialDestination;
+  final bool focusThoughtCapture;
+  final bool openJournalCapture;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +44,14 @@ class AuthGate extends StatelessWidget {
         }
 
         final user = snapshot.data;
-        return user == null ? const AuthPage() : AppShell(userId: user.uid);
+        return user == null
+            ? const AuthPage()
+            : AppShell(
+                userId: user.uid,
+                initialDestination: initialDestination,
+                focusThoughtCapture: focusThoughtCapture,
+                openJournalCapture: openJournalCapture,
+              );
       },
     );
   }

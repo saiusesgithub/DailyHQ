@@ -5,9 +5,18 @@ import 'package:flutter/material.dart';
 import 'app/daily_hq_app.dart';
 import 'app/firebase_startup_error_app.dart';
 import 'firebase_options.dart';
+import 'shell/navigation_destination.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final quickThought = arguments.contains('--quick-thought');
+  final quickJournal = arguments.contains('--quick-journal');
+  final initialDestination = quickThought
+      ? AppDestination.thoughts
+      : quickJournal || arguments.contains('--open=journal')
+      ? AppDestination.journal
+      : AppDestination.dashboard;
 
   try {
     await Firebase.initializeApp(
@@ -21,7 +30,13 @@ Future<void> main() async {
       );
     }
 
-    runApp(const DailyHqApp());
+    runApp(
+      DailyHqApp(
+        initialDestination: initialDestination,
+        focusThoughtCapture: quickThought,
+        openJournalCapture: quickJournal,
+      ),
+    );
   } catch (error, stackTrace) {
     FlutterError.reportError(
       FlutterErrorDetails(

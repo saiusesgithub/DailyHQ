@@ -8,9 +8,14 @@ import '../domain/journal_time_block.dart';
 import 'time_block_form.dart';
 
 class JournalPage extends StatefulWidget {
-  const JournalPage({required this.userId, super.key});
+  const JournalPage({
+    required this.userId,
+    this.openCaptureOnLaunch = false,
+    super.key,
+  });
 
   final String userId;
+  final bool openCaptureOnLaunch;
 
   @override
   State<JournalPage> createState() => _JournalPageState();
@@ -24,6 +29,11 @@ class _JournalPageState extends State<JournalPage> {
   void initState() {
     super.initState();
     _repository = JournalRepository(userId: widget.userId);
+    if (widget.openCaptureOnLaunch) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _addTimeBlock(null);
+      });
+    }
   }
 
   void _changeDay(int offset) {

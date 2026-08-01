@@ -12,9 +12,18 @@ import '../pages/settings_page.dart';
 import 'navigation_destination.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({required this.userId, super.key});
+  const AppShell({
+    required this.userId,
+    this.initialDestination = AppDestination.dashboard,
+    this.focusThoughtCapture = false,
+    this.openJournalCapture = false,
+    super.key,
+  });
 
   final String userId;
+  final AppDestination initialDestination;
+  final bool focusThoughtCapture;
+  final bool openJournalCapture;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -23,12 +32,21 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   static const _desktopBreakpoint = 800.0;
   late final List<AppNavigationDestination> _destinations;
-  AppDestination _selectedDestination = AppDestination.dashboard;
+  late AppDestination _selectedDestination;
+  late bool _focusThoughtCapture;
+  late bool _openJournalCapture;
 
   @override
   void initState() {
     super.initState();
     _destinations = List.of(navigationDestinations);
+    _selectedDestination = widget.initialDestination;
+    _focusThoughtCapture = widget.focusThoughtCapture;
+    _openJournalCapture = widget.openJournalCapture;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusThoughtCapture = false;
+      _openJournalCapture = false;
+    });
   }
 
   void _selectDestination(AppDestination destination) {
@@ -47,9 +65,15 @@ class _AppShellState extends State<AppShell> {
     AppDestination.dashboard => const DashboardPage(),
     AppDestination.dailyTasks => DailyTasksPage(userId: widget.userId),
     AppDestination.todos => TodosPage(userId: widget.userId),
-    AppDestination.journal => JournalPage(userId: widget.userId),
+    AppDestination.journal => JournalPage(
+      userId: widget.userId,
+      openCaptureOnLaunch: _openJournalCapture,
+    ),
     AppDestination.learning => LearningPage(userId: widget.userId),
-    AppDestination.thoughts => ThoughtsPage(userId: widget.userId),
+    AppDestination.thoughts => ThoughtsPage(
+      userId: widget.userId,
+      focusCaptureOnLaunch: _focusThoughtCapture,
+    ),
     AppDestination.projects => ProjectsPage(userId: widget.userId),
     AppDestination.linkedinPosts => LinkedInPostsPage(userId: widget.userId),
     AppDestination.settings => const SettingsPage(),

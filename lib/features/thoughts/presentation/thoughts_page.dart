@@ -6,9 +6,14 @@ import '../data/thoughts_repository.dart';
 import '../domain/thought_day.dart';
 
 class ThoughtsPage extends StatefulWidget {
-  const ThoughtsPage({required this.userId, super.key});
+  const ThoughtsPage({
+    required this.userId,
+    this.focusCaptureOnLaunch = false,
+    super.key,
+  });
 
   final String userId;
+  final bool focusCaptureOnLaunch;
 
   @override
   State<ThoughtsPage> createState() => _ThoughtsPageState();
@@ -26,6 +31,11 @@ class _ThoughtsPageState extends State<ThoughtsPage> {
     super.initState();
     _repository = ThoughtsRepository(userId: widget.userId);
     _selectedDate = _dateOnly(DateTime.now());
+    if (widget.focusCaptureOnLaunch) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _captureFocusNode.requestFocus();
+      });
+    }
   }
 
   @override
