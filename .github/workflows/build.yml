@@ -52,7 +52,7 @@ jobs:
 
   windows:
     name: Windows application
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 30
 
     steps:
@@ -72,10 +72,17 @@ jobs:
       - name: Build Windows release
         run: flutter build windows --release
 
-      - name: Upload Windows application
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "installer\dailyhq.iss"'
+
+      - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: dailyhq-windows-x64
-          path: build/windows/x64/runner/Release/
+          name: dailyhq-windows-installer
+          path: build/installer/DailyHQ-Setup.exe
           if-no-files-found: error
           retention-days: 14
