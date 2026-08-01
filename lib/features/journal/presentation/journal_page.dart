@@ -24,16 +24,12 @@ class JournalPage extends StatefulWidget {
 class _JournalPageState extends State<JournalPage> {
   late final JournalRepository _repository;
   DateTime _selectedDate = _dateOnly(DateTime.now());
+  bool _didOpenCaptureOnLaunch = false;
 
   @override
   void initState() {
     super.initState();
     _repository = JournalRepository(userId: widget.userId);
-    if (widget.openCaptureOnLaunch) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _addTimeBlock(null);
-      });
-    }
   }
 
   void _changeDay(int offset) {
@@ -55,7 +51,10 @@ class _JournalPageState extends State<JournalPage> {
   }
 
   Future<void> _addTimeBlock(DailyJournal? journal) async {
-    final block = await showTimeBlockForm(context: context);
+    final block = await showTimeBlockForm(
+      context: context,
+      initialStartMinutes: _latestEndMinutes(journal?.timeBlocks),
+    );
     if (block == null) return;
     await _save(
       journal: journal,
@@ -98,6 +97,15 @@ class _JournalPageState extends State<JournalPage> {
                 final isLoading =
                     snapshot.connectionState == ConnectionState.waiting;
                 final journal = snapshot.data;
+                if (widget.openCaptureOnLaunch &&
+                    !_didOpenCaptureOnLaunch &&
+                    !isLoading &&
+                    !snapshot.hasError) {
+                  _didOpenCaptureOnLaunch = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _addTimeBlock(journal);
+                  });
+                }
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -152,6 +160,14 @@ class _JournalPageState extends State<JournalPage> {
 
   static DateTime _dateOnly(DateTime date) {
     return DateTime(date.year, date.month, date.day);
+  }
+
+  static int? _latestEndMinutes(List<JournalTimeBlock>? blocks) {
+    if (blocks == null || blocks.isEmpty) return null;
+
+    return blocks
+        .map((block) => block.endMinutes)
+        .reduce((latest, end) => end > latest ? end : latest);
   }
 }
 
